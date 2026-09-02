@@ -1,0 +1,49 @@
+[
+  {
+    "id": "fw-hil-testing-01",
+    "prompt": "固件写完了，CI 上 build 也是绿的，这个状态怎么算可以发货？",
+    "expected_skills": ["fw-hil-testing"],
+    "assertions": [
+      "指出 build 绿只是 Build Verification Only（B0），给出三级徽章判定 Build Verification Only → Boot Verified (QEMU) → HIL Verified，禁止越级声明",
+      "给出验收矩阵模板：每行 = 验收项/前置条件/操作/观察手段/预期/证据形式，要求逐行取证",
+      "矩阵必选覆盖五类行：上电启动、核心功能、异常路径（断电/断网/异常输入）、长时间运行（≥24h soak）、升级路径",
+      "证据纪律：截图/日志/测量值至少其一落文件，每份带设备标识+固件版本+日期",
+      "证据齐、打上 HIL Verified 后转 fw-release-gate 过发布门禁（sha256、命名、发布说明等）"
+    ]
+  },
+  {
+    "id": "fw-hil-testing-02",
+    "prompt": "我在 QEMU 里把启动和网页后台都点了一遍全没问题，这个版本直接发给渠道吧？",
+    "expected_skills": ["fw-hil-testing"],
+    "assertions": [
+      "拒绝直接发货（refusal）：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级",
+      "说明 QEMU 覆盖不了的证据类型：真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化",
+      "给出补齐路径：跑最小真机矩阵（上电/核心功能/断电/soak/升级）取得 B2 证据后再回发布门禁",
+      "QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档，若进内部/测试渠道须显式标注非 HIL 级"
+    ]
+  },
+  {
+    "id": "fw-hil-testing-03",
+    "prompt": "ESP32 烧录完之后串口一点输出都没有，是不是砖了？",
+    "expected_skills": ["fw-hil-testing"],
+    "assertions": [
+      "先定类再动手：构建失败/烧录失败/功能失败三分类，不在硬件上反复盲刷",
+      "排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区对？）→ 换已知良好镜像验证板是否响应",
+      "提醒 Pre-Flash 红线：bootloader/校准区/NVS 不碰；若烧前未留存回退镜像，后续每步风险升级",
+      "路由正确：板能响属镜像问题转构建侧（fw-emulation 分离镜像 vs 板），有输出但崩溃/复位转 esp32-debug，盒子类完全无响应转 openwrt-serial-recovery"
+    ]
+  },
+  {
+    "id": "fw-hil-testing-04",
+    "prompt": "给 N1 盒子刷了新版 OpenWrt，发货之前真机上要验收哪些东西？要跑多久？",
+    "expected_skills": ["fw-hil-testing"],
+    "assertions": [
+      "按网关型矩阵实例化：上电到可用、存储挂载、核心服务、Web 后台逐行验收",
+      "异常路径必须真做：断电循环（如 10 次拔电）、断网降级、异常输入（满盘/畸形配置）",
+      "长时间运行：≥24h soak 起步，采样内存/温度/服务存活/重启计数",
+      "升级路径：升级成功+升级中断电回退，并演练回退镜像/ddbr 恢复",
+      "Pre-Flash：烧前留存当前可用固件备份（ddbr），bootloader/校准区不碰",
+      "单台全绿只是 G1 工程样机级，批量按 G1→G2→G3→G4 商业门禁逐级放行（激活率/启动率/退款率类指标在小批量阶段观察）"
+    ]
+  }
+]

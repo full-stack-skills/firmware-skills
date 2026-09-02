@@ -1,0 +1,48 @@
+[
+  {
+    "id": "fw-release-gate-01",
+    "prompt": "镜像马上要发给渠道了，发之前到底要检查哪些东西？",
+    "expected_skills": ["fw-release-gate"],
+    "assertions": [
+      "给出可脚本化检查单：产物存在+sha256 成对且门禁重算一致、命名 lint、零外链扫描、密钥扫描、回滚预案、HIL 徽章达标、发布说明含已知问题、LICENSE 清单",
+      "命名按五段式模板核对（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），文件名与构建记录一致，不手填日期",
+      "徽章门槛：渠道版必须 ≥ HIL Verified；Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注",
+      "要求负向验证：故意破坏一项（改名/篡改镜像/删 .sha256），门禁必须能拦截",
+      "任一项失败修复后重跑全单，不是只补失败项"
+    ]
+  },
+  {
+    "id": "fw-release-gate-02",
+    "prompt": "签名私钥放 CI 的环境变量里就行吧？我们 CI 仓库是私有的，外人看不到。",
+    "expected_skills": ["fw-release-gate"],
+    "assertions": [
+      "明确拒绝（refusal）：CI 明文环境变量会进日志、被子进程继承、落进镜像层，私有仓库不改变泄露面",
+      "给出治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查",
+      "给出非对称模式：固件只嵌公钥（或公钥摘要）、私钥仅构建/签名机、渠道子密钥分发",
+      "若私钥已配置过：按已泄露处理（停用→评估作废/轮换→复盘），不是删掉变量就完事",
+      "ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot，不混在发布流程里展开"
+    ]
+  },
+  {
+    "id": "fw-release-gate-03",
+    "prompt": "我们有两个渠道的固件，能不能共用同一把签名密钥？省事。",
+    "expected_skills": ["fw-release-gate"],
+    "assertions": [
+      "给出模式级决策：单根钥跨渠道 = 单点泄露全线沦陷，且无法只作废一个渠道",
+      "推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥",
+      "一句话边界声明：对称短码方案=固件含铸码能力（提取固件即可铸码），非对称=提取固件不可铸码——商业授权优先非对称",
+      "放行前置：子钥作废/轮换预案成文；多渠道镜像各自走发布门禁（校验和、命名渠道段、徽章）"
+    ]
+  },
+  {
+    "id": "fw-release-gate-04",
+    "prompt": "代码一行没改，两次构建出来的镜像 sha256 却不一样，这版还能发吗？",
+    "expected_skills": ["fw-release-gate"],
+    "assertions": [
+      "不直接放行：先说明不可复现的常见来源——覆盖层时间戳/随机 ID、ipk 仓库版本漂移、host 工具差异",
+      "给出验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希，机制细节路由 openwrt-image-build 的 reproducible-build",
+      "门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic",
+      "发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分"
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "esp32-lowpower-01",
+    "prompt": "我们有个电池供电的 ESP32-C3 传感器节点，要求一个月以上续航，每小时上报一次数据，偶尔有人在旁边按一下按钮触发即时上报。睡眠策略怎么选？",
+    "expected_skills": ["esp32-lowpower"],
+    "assertions": [
+      "读 target 先行：先确认芯片（ESP32-C3）与现有 sdkconfig 睡眠配置，再谈策略",
+      "周期上报主策略 = deep sleep + RTC timer 唤醒（基线确认 µs 精度定时）；按钮事件叠加 EXT0/EXT1（RTC GPIO，仅认 RTC GPIO 集合，引脚不确定即停）",
+      "跨睡眠小状态（上报计数/上次时间戳）放 RTC 内存保留；掉电不可丢的数据入睡前快照到 NVS，并说明两者取舍（跨睡眠找 RTC、跨掉电找 NVS、NVS 有写入寿命考量）",
+      "明确拒绝给深睡 µA 具体数字：基线标注 UNVERIFIED，续航测算必须用功率计板级实测电流做占空比加权，而不是数据手册转述值",
+      "真机逐唤醒源触发验收与长跑功耗验收路由 fw-hil-testing；无真机结论标 Pending HIL"
+    ]
+  },
+  {
+    "id": "esp32-lowpower-02",
+    "prompt": "ESP32 deep sleep 电流就是 10µA 左右对吧？datasheet 都这么写，我们直接按 10µA 算续航就行了吧？",
+    "expected_skills": ["esp32-lowpower"],
+    "assertions": [
+      "refusal 立场：拒绝把 10µA 这类转述数字当事实——基线仅确认深睡电流为 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA），具体数值标 UNVERIFIED 须运行时核验",
+      "解释数据手册值 ≠ 板级值：外设漏电、上拉电阻、LED、稳压器静态电流都会把实测电流放大数倍，'拆干净再测'也不代表产品真实配置",
+      "给出实测方法：功率计/源表串联供电回路、按产品真实外设配置、进入睡眠稳定 ≥5 分钟取平均电流、记录供电方式与板级配置",
+      "续航算法：续航 ≈ 电池可用容量 ÷ 占空比加权平均电流（实测输入），缺实测输入的续航承诺不出口",
+      "真机功耗/长跑/温度维度验收路由 fw-hil-testing，无真机标 Pending HIL"
+    ]
+  },
+  {
+    "id": "esp32-lowpower-03",
+    "prompt": "设备要在睡眠期间保存几个配置变量，而且换电池重新上电之后最好也还在，用什么方案？另外能不能用 UART 数据唤醒 deep sleep？",
+    "expected_skills": ["esp32-lowpower"],
+    "assertions": [
+      "跨睡眠保存 → RTC 内存保留（醒来即得但换电池即失）；跨掉电存活 → NVS 快照（入睡前写入），两者取舍讲清，本例需求命中 NVS",
+      "UART 唤醒 deep sleep 不在基线 6 类唤醒源（RTC Timer/Touch/EXT0/EXT1/ULP/deepsleep GPIO wake）内 → 标 UNVERIFIED，指引查官方 sleep_modes 文档运行时核验，不凭记忆答'可以'或'不可以'",
+      "按键/外部事件类唤醒建议回到 EXT0/EXT1（RTC GPIO 集合，具体引脚以芯片手册为准，不确定即停）",
+      "ULP 形态按芯片区分（ESP32=ULP-FSM，S2/S3=RISC-V ULP 或 FSM，C6/P4=LP 核），写 ULP 前先确认 target",
+      "唤醒后用复位/唤醒原因查询打进启动日志，逐源真机触发验收，无真机标 Pending HIL"
+    ]
+  }
+]

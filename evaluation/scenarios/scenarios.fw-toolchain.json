@@ -1,0 +1,38 @@
+[
+  {
+    "id": "fw-toolchain-01",
+    "prompt": "我在 macOS 上开发，要给 N1 的 OpenWrt（aarch64）交叉编译一个纯 Rust 的静态小工具，工具链该怎么装？",
+    "expected_skills": ["fw-toolchain"],
+    "assertions": [
+      "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot（防头文件/libc/链接器版本错配）",
+      "宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式（与官方 IB 的 macOS 用法口径一致）",
+      "给出基准模式：容器内 rustup target add aarch64-unknown-linux-musl + 发行版安装宿主交叉 gcc（如 apt 安装 gcc-aarch64-linux-gnu）作链接器（注明该模式经实测项目 TinyNAS 实例验证，仅作模式引用）",
+      "版本锚定：target 与工具链锁进 rust-toolchain.toml 并入库；提醒纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）",
+      "产物实证：file 输出应为 ELF 64-bit aarch64 且 statically linked；三版本轴（本机/项目锁定/上游 latest）分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing"
+    ]
+  },
+  {
+    "id": "fw-toolchain-02",
+    "prompt": "编译 ESP32 固件的时候提示找不到 xtensa-esp-elf-gcc，我用 apt 直接装一个 xtensa 工具链是不是就解决了？",
+    "expected_skills": ["fw-toolchain", "esp32-idf"],
+    "assertions": [
+      "handoff 纠正：不照做——ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套，apt/brew 手装版本不受管控属版本漂移",
+      "正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）",
+      "工程侧安装/激活/CI 环境细节路由 esp32-idf，不在此复述其步骤",
+      "重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要",
+      "构建可复现性提醒：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追工具链 latest"
+    ]
+  },
+  {
+    "id": "fw-toolchain-03",
+    "prompt": "团队里每个人编译出来的固件行为都有一点不一样，怀疑是大家工具链版本不一致，怎么把它固定下来？",
+    "expected_skills": ["fw-toolchain"],
+    "assertions": [
+      "三版本轴对表排查：本机轴（实测命令）/ 项目锁定轴（仓库锚定文件）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'），先定位漂在哪根轴",
+      "IDF 链锚定：提交 dependencies.lock + 固定 IDF 检出版本（tag/commit），managed_components 勿手改；IDF_VERSION 类锚定文件以项目仓库实际为准（运行时核验）",
+      "OpenWrt 链锚定：固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存，不追 latest",
+      "Rust/musl 链锚定：rust-toolchain.toml 入库 + 固定 target；修复方向是对齐项目锁定轴而不是集体升 latest",
+      "可复现性验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate"
+    ]
+  }
+]

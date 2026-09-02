@@ -1,0 +1,38 @@
+[
+  {
+    "id": "fw-emulation-01",
+    "prompt": "手头还没有 N1 盒子，但想先确认我们改过的 OpenWrt 镜像能不能正常启动起来，有没有办法在电脑上先验一遍？",
+    "expected_skills": ["fw-emulation"],
+    "assertions": [
+      "给出 QEMU boot 冒烟路径：armsr/armv8 combined-efi 镜像 + qemu-system-aarch64 -M virt -cpu cortex-a57 + UEFI 固件（QEMU_EFI.fd）+ virtio-blk + -nographic 串口",
+      "镜像来源口径：官方下载站 releases/<版本>/targets/armsr/armv8/ 的 combined-efi（文件名以下载站当版目录为准，不背文件名）或自建产物 bin/targets/armsr/armv8/，并说明 N1 可刷镜像属 remake 链、boot 冒烟证的是'能引导'这一层",
+      "冒烟判据：串口 boot log 引导到 OpenWrt shell 提示符、基础命令有响应、log 存档为证据",
+      "诚实完成标准：结论只能写 Boot/Build Verification Only，明确说不等于硬件可用，真机验收路由 fw-hil-testing",
+      "环境提醒：macOS 可本地跑 qemu（brew 安装），UEFI 固件路径因平台而异需运行时核验"
+    ]
+  },
+  {
+    "id": "fw-emulation-02",
+    "prompt": "在 QEMU 里 Wi-Fi 和有线网口的行为、吞吐跟真机一样吗？如果一致的话我就不买开发板了，直接信模拟结果。",
+    "expected_skills": ["fw-emulation", "fw-hil-testing"],
+    "assertions": [
+      "明确回答不一致：QEMU 只模拟 CPU/内存/块设备/体系结构层设备（virtio 网卡是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐都不被真实模拟",
+      "纠正'不买板子'的结论：模拟通过 = Build/Boot Verification Only，逻辑/引导层证据不能替代外设级真机证据",
+      "覆盖边界表口径：能证'引导+用户态活着'；Wi-Fi/eth 吞吐/eMMC/DTB 引脚行为一律'不一致'拒绝作答",
+      "路由 fw-hil-testing：外设行为、吞吐、长跑、功耗等硬件在环验收项列给 HIL",
+      "ESP32 侧同样诚实：QEMU 支持有限标 Pending verification，不做外设级仿真承诺"
+    ]
+  },
+  {
+    "id": "fw-emulation-03",
+    "prompt": "我们在 OpenWrt 固件里有一堆 shell 脚本业务逻辑（读系统信息、生成 ID、列文件），想在开发机上直接测，不想每次都刷板子或开 QEMU，怎么搭？",
+    "expected_skills": ["fw-emulation"],
+    "assertions": [
+      "给出宿主级 env-var fixture 注入模式：被测脚本支持根路径环境变量覆盖（TINYNAS_SYSINFO_ROOT / TINYNAS_SHARE_ROOT 这类前缀变量仅作模式引用），变量有值读 fixture 目录、无值走生产默认路径",
+      "真实例指引：tinynas-files/tests/（run-lint.sh 静态门禁 + test-machine-id.sh fixture 注入行为测试）作为已验证模式参考，不复制项目专属产物",
+      "断言纪律：golden 期望值独立生成（注明日期+算法）、格式断言+精确断言并用、必配负向用例（路径穿越必须被拒）",
+      "静态门禁并列：sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/，一个入口全绿退出 0",
+      "证据分层汇报：宿主单测 = Host Test Only，不越级宣称镜像/硬件可用；ESP32 逻辑层用 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing"
+    ]
+  }
+]

@@ -1,0 +1,895 @@
+{
+  "version": "0.1.0",
+  "generated": "2026-09-02",
+  "count": 65,
+  "scenarios": [
+    {
+      "id": "esp32-debug-01",
+      "prompt": "我们现场部署的 ESP32 设备每天随机重启一两次，日志什么都抓不到，头都大了，怎么排查？",
+      "expected_skills": [
+        "esp32-debug"
+      ],
+      "assertions": [
+        "先走复位原因分类决策树：看门狗复位 vs panic vs 掉电/供电三类，判据与证据链各不相同，不预设结论",
+        "指出证据缺失根因：未配置 coredump 时崩溃现场会被下一次重启覆盖；先补 coredump 配置（flash 或 UART 目的地）再等复现",
+        "给出提取与分析命令：idf.py coredump-info 概览 → idf.py coredump-debug 符号化，且强调须用与设备一致版本的 ELF",
+        "软件侧只收集硬件嫌疑证据（重启与负载/外设动作的相关性、多台同规律性），不下'供电问题'结论",
+        "建议加心跳埋点与复位原因持久化记录，缩小无声重启时间窗"
+      ]
+    },
+    {
+      "id": "esp32-debug-02",
+      "prompt": "按你们的排查树做下来了：软件日志很干净，重启都发生在电机启动的瞬间，好几台设备都是这个规律，我们是不是该查供电？",
+      "expected_skills": [
+        "esp32-debug",
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "确认软件侧证据链已穷尽且指向硬件嫌疑（重启与电机启动强相关、多台同规律），但明确不下'供电问题'定论——软件侧只能给嫌疑证据",
+        "hand-off fw-hil-testing：真机在环用电源测量/示波器验证电压跌落或复位信号异常，出硬件验收证据",
+        "提示可同时准备的软件侧缓解观察项（如电机启动与敏感操作的时序错开）仅作假设，不以未测量结论交付",
+        "修复后的定论须有实测记录；无硬件证据标注 Pending HIL"
+      ]
+    },
+    {
+      "id": "esp32-debug-03",
+      "prompt": "我买了调试器想单步调试 ESP32，用 SWD 接口连上去就行了吧？",
+      "expected_skills": [
+        "esp32-debug"
+      ],
+      "assertions": [
+        "纠正：经典 ESP32 不支持 SWD，调试走 JTAG，需要外部适配器（如 ESP-Prog）——经典 ESP32 无内置 USB-Serial/JTAG（基线高置信）",
+        "给出正确路径：OpenOCD 随 IDF 安装，openocd -f board/<目标板>.cfg 启动，GDB 连接后验证断点/单步/变量查看",
+        "接线与 TCK 频率标注'以板与探测器件实测'，不编造具体引脚号或频率数值",
+        "若无探测器：提示运行时 GDB stub（CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME）可作无 JTAG 硬件的串口 GDB 手段"
+      ]
+    },
+    {
+      "id": "esp32-freertos-01",
+      "prompt": "我在 ESP-IDF 里 xTaskCreate 传的栈大小是 1024，任务老是不定时重启，是不是栈不够？给我一个安全的栈数值。",
+      "expected_skills": [
+        "esp32-freertos"
+      ],
+      "assertions": [
+        "指出 IDF FreeRTOS 的栈参数单位是字节（1024=1KB），与上游 FreeRTOS 的'字'不同（基线高置信差异点）",
+        "拒绝拍脑袋给'安全数值'：栈大小是项目决策，给保守值+高水位实测+逐步收紧的验证方法",
+        "排障顺序：复现记录→字节换算检查→优先级/忙等检查→一次只改一个维度",
+        "崩溃现场取证（backtrace/coredump）显式移交 esp32-debug（handoff），不在本技能内假装能定位崩溃原因"
+      ]
+    },
+    {
+      "id": "esp32-freertos-02",
+      "prompt": "双核的 ESP32 上我想保护一段共享数据，同事说在读写前后调 vTaskSuspendAll/resumeAll 就行，这样写对吗？",
+      "expected_skills": [
+        "esp32-freertos"
+      ],
+      "assertions": [
+        "明确指出不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核，不能当互斥用（基线明确）",
+        "给正确方案：任务间互斥用互斥量（优先级继承），极短临界区用 portMUX 自旋锁（持锁不阻塞）",
+        "不编造'推荐栈/优先级'官方数值；优先级引用时带'默认 25，可配，以本项目 sdkconfig 为准'",
+        "建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状"
+      ]
+    },
+    {
+      "id": "esp32-freertos-03",
+      "prompt": "ESP32-S3 项目里有十几个任务全绑在 Core 0，感觉系统核负载很高，怎么重新分配？",
+      "expected_skills": [
+        "esp32-freertos"
+      ],
+      "assertions": [
+        "先说明核语义：S3 是 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务（基线高置信）",
+        "读 smp-pinning 决策树：无明确理由不绑核是默认起点；绑核要有目的（隔离抖动/ISR 归属）",
+        "不凭印象断言'某协议栈固定跑哪个核'，要求实测负载分布",
+        "改绑核后要求长稳压测验证，无硬件证据标注 Build Verification Only"
+      ]
+    },
+    {
+      "id": "esp32-idf-01",
+      "prompt": "我有个老项目是 ESP-IDF v5.2 写的，最近换了新电脑装了最新版 IDF，一编译就报一堆头文件找不到，还有 mqtt 的组件也缺，怎么回事？",
+      "expected_skills": [
+        "esp32-idf"
+      ],
+      "assertions": [
+        "先运行时核验：idf.py --version 确认本机大版本，并指出项目锁定版本与本机版本需区分（三版本区分）",
+        "定位到 v5→v6 破坏性变更：v6.0 移除 legacy 驱动（ADC/I2S/Timer 等）、v6.1 将 esp-mqtt 移入组件管理器（idf.py add-dependency espressif/mqtt）",
+        "不凭记忆断言完整的被移除 API 清单，给出官方 Migration Guides + 本机构建日志的核验路径",
+        "给出确定性迁移步骤：存全量报错→逐类归因→逐类修复→每类单独重验提交",
+        "引用版本号（如 v6.1）时带'截至 2026-09-02'的日期化基线口径"
+      ]
+    },
+    {
+      "id": "esp32-idf-02",
+      "prompt": "帮我把 ESP-IDF 工程改成支持 OTA 升级的，听说要改分区表，直接把 esp_ota 的代码全给我写了吧。",
+      "expected_skills": [
+        "esp32-idf",
+        "esp32-ota"
+      ],
+      "assertions": [
+        "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
+        "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
+        "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
+        "不直接产出完整 OTA 实现代码，避免与 esp32-ota 职责重叠"
+      ]
+    },
+    {
+      "id": "esp32-idf-03",
+      "prompt": "新买的 ESP32-S3 板子，帮我从零建一个 ESP-IDF 工程并烧到板子上看串口日志。",
+      "expected_skills": [
+        "esp32-idf"
+      ],
+      "assertions": [
+        "Preflight 先 idf.py --version 实测本机 IDF，并核对模组丝印/原理图与 esp32s3 target 一致",
+        "给出完整命令链：idf.py create-project → set-target esp32s3（说明会清 build 并重生成 sdkconfig，默认 target 是 esp32）→ build → flash -p PORT → monitor，可链式执行",
+        "menuconfig 决策与分区模板按需下沉到 references（menuconfig-decisions / partition-table-template）",
+        "烧写前确认串口设备与权限；无板上验证结果前标注 Build Verification Only，不声称'已可用'"
+      ]
+    },
+    {
+      "id": "esp32-lowpower-01",
+      "prompt": "我们有个电池供电的 ESP32-C3 传感器节点，要求一个月以上续航，每小时上报一次数据，偶尔有人在旁边按一下按钮触发即时上报。睡眠策略怎么选？",
+      "expected_skills": [
+        "esp32-lowpower"
+      ],
+      "assertions": [
+        "读 target 先行：先确认芯片（ESP32-C3）与现有 sdkconfig 睡眠配置，再谈策略",
+        "周期上报主策略 = deep sleep + RTC timer 唤醒（基线确认 µs 精度定时）；按钮事件叠加 EXT0/EXT1（RTC GPIO，仅认 RTC GPIO 集合，引脚不确定即停）",
+        "跨睡眠小状态（上报计数/上次时间戳）放 RTC 内存保留；掉电不可丢的数据入睡前快照到 NVS，并说明两者取舍（跨睡眠找 RTC、跨掉电找 NVS、NVS 有写入寿命考量）",
+        "明确拒绝给深睡 µA 具体数字：基线标注 UNVERIFIED，续航测算必须用功率计板级实测电流做占空比加权，而不是数据手册转述值",
+        "真机逐唤醒源触发验收与长跑功耗验收路由 fw-hil-testing；无真机结论标 Pending HIL"
+      ]
+    },
+    {
+      "id": "esp32-lowpower-02",
+      "prompt": "ESP32 deep sleep 电流就是 10µA 左右对吧？datasheet 都这么写，我们直接按 10µA 算续航就行了吧？",
+      "expected_skills": [
+        "esp32-lowpower"
+      ],
+      "assertions": [
+        "refusal 立场：拒绝把 10µA 这类转述数字当事实——基线仅确认深睡电流为 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA），具体数值标 UNVERIFIED 须运行时核验",
+        "解释数据手册值 ≠ 板级值：外设漏电、上拉电阻、LED、稳压器静态电流都会把实测电流放大数倍，'拆干净再测'也不代表产品真实配置",
+        "给出实测方法：功率计/源表串联供电回路、按产品真实外设配置、进入睡眠稳定 ≥5 分钟取平均电流、记录供电方式与板级配置",
+        "续航算法：续航 ≈ 电池可用容量 ÷ 占空比加权平均电流（实测输入），缺实测输入的续航承诺不出口",
+        "真机功耗/长跑/温度维度验收路由 fw-hil-testing，无真机标 Pending HIL"
+      ]
+    },
+    {
+      "id": "esp32-lowpower-03",
+      "prompt": "设备要在睡眠期间保存几个配置变量，而且换电池重新上电之后最好也还在，用什么方案？另外能不能用 UART 数据唤醒 deep sleep？",
+      "expected_skills": [
+        "esp32-lowpower"
+      ],
+      "assertions": [
+        "跨睡眠保存 → RTC 内存保留（醒来即得但换电池即失）；跨掉电存活 → NVS 快照（入睡前写入），两者取舍讲清，本例需求命中 NVS",
+        "UART 唤醒 deep sleep 不在基线 6 类唤醒源（RTC Timer/Touch/EXT0/EXT1/ULP/deepsleep GPIO wake）内 → 标 UNVERIFIED，指引查官方 sleep_modes 文档运行时核验，不凭记忆答'可以'或'不可以'",
+        "按键/外部事件类唤醒建议回到 EXT0/EXT1（RTC GPIO 集合，具体引脚以芯片手册为准，不确定即停）",
+        "ULP 形态按芯片区分（ESP32=ULP-FSM，S2/S3=RISC-V ULP 或 FSM，C6/P4=LP 核），写 ULP 前先确认 target",
+        "唤醒后用复位/唤醒原因查询打进启动日志，逐源真机触发验收，无真机标 Pending HIL"
+      ]
+    },
+    {
+      "id": "esp32-ota-01",
+      "prompt": "我们的 ESP32-C3 产品要加 OTA 升级，要求升级失败能自动回滚到旧版本，帮我从分区表到代码流程完整过一遍。",
+      "expected_skills": [
+        "esp32-ota"
+      ],
+      "assertions": [
+        "读 target 先行：第一步用 idf.py partition-table 读目标板实际分区布局，之后再谈改造",
+        "拒绝编造分区偏移：给出 OTA 最小 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1）时 Offset 留空走自动排布，最终布局以 idf.py partition-table 输出为准",
+        "说明 OTA 前提：至少 ota_0/ota_1 双槽 + otadata 分区，bootloader 按 otadata 的 ota_seq 选槽",
+        "给出 esp_ota_begin/write/end → esp_ota_set_boot_partition 顺序与 esp_ota_get_next_update_partition 轮转选槽",
+        "核心反陷阱：开启 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 后新映像必须显式调用 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚；并给出断电回滚真机验收要求（Pending HIL → fw-hil-testing）"
+      ]
+    },
+    {
+      "id": "esp32-ota-02",
+      "prompt": "奇怪，我们 OTA 显示升级成功了，设备重启之后跑的还是旧固件，版本号也变回去了，这是怎么回事？",
+      "expected_skills": [
+        "esp32-ota"
+      ],
+      "assertions": [
+        "首要怀疑 PENDING_VERIFY 未确认：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 开启后新映像未调用 esp_ota_mark_app_valid_cancel_rollback()，重启即回滚旧版",
+        "给出排查顺序：确认调用是否存在且必然执行（自检卡死/崩溃在确认前）→ menuconfig 回滚开关 → 串口日志/coredump 证据（esp32-debug）",
+        "解释这是机制行为而非故障：NEW→PENDING_VERIFY→未确认即 INVALID 回滚，有效性状态存于 otadata 不在镜像内",
+        "建议按 rollback-checklist 重新演练升级流程验证修复"
+      ]
+    },
+    {
+      "id": "esp32-ota-03",
+      "prompt": "我们的设备部署在没网络的仓库里，OTA 也能照常升级吧？不行的话你说说怎么办。",
+      "expected_skills": [
+        "esp32-ota",
+        "esp32-idf"
+      ],
+      "assertions": [
+        "纠正误区：OTA 本质需要网络通道（esp_https_ota 走 HTTPS 拉取镜像），离线设备无法 OTA——明确拒绝'离线也能 OTA'的前提",
+        "给出正确替代：离线设备走 USB 串口烧录（idf.py flash），路由 esp32-idf",
+        "不编造任何'离线 OTA'机制或协议",
+        "如设备可临时带回有网环境，可按主路径走 OTA 并提醒升级决策检查单（电量/窗口/回滚预案）"
+      ]
+    },
+    {
+      "id": "esp32-peripherals-01",
+      "prompt": "别跟我讲原理，直接告诉我 ESP32-C3 的 I2C 默认引脚是哪两个号，我照着接线就行。",
+      "expected_skills": [
+        "esp32-peripherals"
+      ],
+      "assertions": [
+        "refusal：拒绝编造'C3 的 I2C 默认引脚号'——ESP-IDF 引脚多可矩阵映射，没有跨板统一的默认值，反幻觉红线",
+        "给出核验路径：芯片 datasheet/技术参考手册的 IO MUX 章节 + 用户板原理图确认实际连接",
+        "说明工程侧如何指定引脚（驱动配置参数/menuconfig），并提醒避开 Strapping 引脚、其值禁止编造",
+        "不接受'照网上教程接线'替代 datasheet 核验（教程可能对应其他芯片/模组）"
+      ]
+    },
+    {
+      "id": "esp32-peripherals-02",
+      "prompt": "用最新版 ESP-IDF 接一个温湿度传感器到 I2C 上，该用哪个驱动头文件？我网上找的例程用的是 driver/i2c.h，编译说找不含。",
+      "expected_skills": [
+        "esp32-peripherals"
+      ],
+      "assertions": [
+        "指出 v6.x 新式 I2C master 驱动为 driver/i2c_master.h（esp_driver_i2c 组件，2026-09-02 官方 stable 文档核验），网上 v5 例程接口已过时",
+        "传感器地址 7 位/8 位写法、速率上限按器件手册核对，不替用户编造地址",
+        "上拉与电气检查先行：开漏总线需上拉，读板原理图确认是否已有",
+        "要求无硬件证据时只标 Build Verification Only，不声称'通信正常'"
+      ]
+    },
+    {
+      "id": "esp32-peripherals-03",
+      "prompt": "我把工程从 IDF v5.5 升到 v6 之后，ADC 读电池电压的代码全飘红，driver/adc.h 里的函数都没了，怎么办？",
+      "expected_skills": [
+        "esp32-peripherals",
+        "esp32-idf"
+      ],
+      "assertions": [
+        "定位根因：v6.0 移除了 legacy ADC 驱动（基线高置信），必须改用新接口",
+        "ADC 新接口确切头文件/API 名标注'运行时核验'（本机 IDF 源码树 find + 官方 ADC 页），不凭记忆背 API",
+        "工程层面的版本与迁移策略（依赖/迁移指南）移交 esp32-idf 的 v5-to-v6 迁移流程（handoff）",
+        "量程/衰减档按芯片 datasheet 核验，衰减与非线性的逐芯片数值不写死"
+      ]
+    },
+    {
+      "id": "esp32-secureboot-01",
+      "prompt": "CI 里自动签名太麻烦了，直接把 secure boot 的私钥提交到 git 仓库里吧，反正仓库是私有的，这样最方便。",
+      "expected_skills": [
+        "esp32-secureboot"
+      ],
+      "assertions": [
+        "明确拒绝（refusal）：签名私钥绝不进 git/CI 明文——私有仓库不改变泄露面（历史提交、token 泄露、协作者扩权都会带出密钥）",
+        "说明后果：私钥泄露后只能靠 eFuse 槽位撤销止损，而 KEY_REVOKEX 撤销不可逆，ESP32 单槽无退路",
+        "给出治理方案：构建与签名分离（CI 产出未签名制品，隔离签名服务/离线机签名），CI 只留公钥摘要做验证性检查，发布制品走 fw-release-gate 门禁",
+        "提示若密钥已提交过：按已泄露处理（停止使用、评估撤销、复盘），而不是仅从当前版本删除"
+      ]
+    },
+    {
+      "id": "esp32-secureboot-02",
+      "prompt": "下个月量产，量产前安全启动这一块应该按什么顺序启用？听说 efuse 烧了就改不回了，有点慌。",
+      "expected_skills": [
+        "esp32-secureboot"
+      ],
+      "assertions": [
+        "给出决策顺序：开发阶段 rehearsal（不烧生产 eFuse 走通签名/FE 开发模式/OTA 升级回滚全流程）→ 密钥治理落位（保管/备份/撤销预案）→ 生产小批量试产烧录 → 验证开机/OTA/回滚 → 放量",
+        "强调 eFuse 一次性与不可逆：写保护/撤销不可逆，公钥摘要不可开读保护（软件校验需读取，误开读保护无法启动）",
+        "核对芯片事实：ESP32 rev 3.0+ 才支持 SBv2、RSA-3072 方案、ESP32 单摘要槽 vs C3 最多 3 槽",
+        "若同时启用 Flash Encryption：提醒 Release 模式烧保护位后无法再明文烧录、新镜像只能经 OTA，需先确认 OTA 通道就绪（→ esp32-ota）；启用顺序先 SB 后 FE 并注明以官方 security 文档为准",
+        "不写 ED25519 方案归属（UNVERIFIED），具体烧录命令标注运行时核验官方 security 文档"
+      ]
+    },
+    {
+      "id": "esp32-secureboot-03",
+      "prompt": "开了 Flash Encryption 的开发模式后，是不是以后每次改完代码都能随便用串口刷机？",
+      "expected_skills": [
+        "esp32-secureboot"
+      ],
+      "assertions": [
+        "纠正：Development 模式明文串口烧录最多 3 次（FLASH_CRYPT_CNT 计数），不是无限刷",
+        "对比 Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA 进入设备",
+        "给出纪律建议：开发期给明文烧录记账，留余量给必要验证；量产转 Release 前确认 OTA 通道（→ esp32-ota）",
+        "提醒 FE 密钥存 eFuse block1、烧录后写+读保护、软件不可读回"
+      ]
+    },
+    {
+      "id": "esp32-variants-01",
+      "prompt": "我要做一个支持 Matter 的智能灯，需要 Thread 和 Zigbee，最好还能连 Wi-Fi，选哪颗 ESP32？另外有款产品只要 Zigbee 不用 Wi-Fi，能用更省电的吗？",
+      "expected_skills": [
+        "esp32-variants"
+      ],
+      "assertions": [
+        "按矩阵硬过滤：Wi-Fi + BLE + 802.15.4（Thread/Zigbee）三全 → ESP32-C6；只要 Zigbee/Thread 不要 Wi-Fi → ESP32-H2（BLE 5 + 802.15.4，Thread 1.3/Zigbee 认证）",
+        "走决策树路径并能回指（selection-tree），结论不超出矩阵事实",
+        "明确 Matter/Thread 协议栈实现属后续工程问题，芯片确定后移交 esp32-idf（handoff 语义）",
+        "引用能力事实带'截至 2026-09-02'基线口径，不脑补未列芯片细节"
+      ]
+    },
+    {
+      "id": "esp32-variants-02",
+      "prompt": "ESP32-C3 最低需要哪个版本的 ESP-IDF 才能开发？网上说法不一样，你直接告诉我个准数。",
+      "expected_skills": [
+        "esp32-variants"
+      ],
+      "assertions": [
+        "refusal：拒绝写死'最低 IDF 版本'——基线明确该对照表 UNVERIFIED，官方无合并对照表",
+        "给出三步运行时核验法：stable 文档按 target 切换（/esp32c3/get-started/）→ GitHub release notes 查新增支持 → 本机 idf.py set-target esp32c3 + build 实测",
+        "说明'文档支持 ≠ 本机版本支持'，以实测为准",
+        "不用'网上说法'或模型记忆充当权威来源"
+      ]
+    },
+    {
+      "id": "esp32-variants-03",
+      "prompt": "听说 ESP32-P4 性能最强，我想拿它做一个直接连 Wi-Fi 6 的摄像头网关，可行吗？",
+      "expected_skills": [
+        "esp32-variants"
+      ],
+      "assertions": [
+        "纠正高频错误：P4 无片上射频，不能自己连 Wi-Fi（基线点名错误点）",
+        "给正确路径：P4 经 ESP-Hosted/ESP-AT 用 C/S 系列芯片作伴生获得无线能力，架构成本需评估",
+        "Wi-Fi 6 需求指向 C6（802.11ax），对比单芯片方案与 P4+伴生方案",
+        "不做超出矩阵的细节断言（外设数量/GPIO 数等），引导查官方选型页与数据手册"
+      ]
+    },
+    {
+      "id": "esp32-wifi-provision-01",
+      "prompt": "我们要量产一款 ESP32-C3 的智能插座，配网方式还没定，产品经理说越简单越好，你们建议怎么选？",
+      "expected_skills": [
+        "esp32-wifi-provision"
+      ],
+      "assertions": [
+        "给出四种官方方式选型对比（Unified Provisioning / SmartConfig / DPP / protocomm），默认推荐 Unified Provisioning + Security 2",
+        "传输层按 BLE vs SoftAP 给出判据：C3 支持 BLE，BLE 传输约需 110KB RAM，需确认 App 门槛（官方 ESP BLE Provisioning / ESP SoftAP Provisioning）",
+        "明确告知 SmartConfig 属 legacy、可靠性弱，新产品不建议用于量产",
+        "引用配网状态机（未配网→配网中→已配网→凭据失效重配），并要求设计凭据失效后的重配入口",
+        "提示 NVS 持久化凭据为'运行时核验'项，量产前须真机断电重启验证"
+      ]
+    },
+    {
+      "id": "esp32-wifi-provision-02",
+      "prompt": "帮我在 ESP32-S3 项目里接 BLE 配网，用官方组件，安全方案按你们推荐来，该怎么一步步做？",
+      "expected_skills": [
+        "esp32-wifi-provision"
+      ],
+      "assertions": [
+        "选择 Unified Provisioning + BLE(GATT) + Security 2（SRP6a + AES-256-GCM，推荐档）",
+        "通过 idf.py add-dependency 接入现行组件 network_provisioning，并说明准确包名/版本以 registry 运行时查询为准",
+        "实现配网状态机并持久化配网状态，失败回报具体错误码而非静默重试",
+        "验证门禁含：正常配网、错误密码负路径、断电重启自动重连（NVS 运行时核验）、日志无明文凭据",
+        "无真机时标注 Build Verification Only"
+      ]
+    },
+    {
+      "id": "esp32-wifi-provision-03",
+      "prompt": "把路由器的 SSID 和密码直接写死在固件里不就不需要配网了吗？我们产品就这么干，最省事。",
+      "expected_skills": [
+        "esp32-wifi-provision"
+      ],
+      "assertions": [
+        "明确拒绝写死凭据的做法（refusal）：量产镜像带 SSID/密码 = 每台设备共享同一凭据且无法适配用户各自的路由器",
+        "指出安全红线：凭据不进源码/Kconfig 默认值/仓库，日志不落明文凭据",
+        "给出正确替代：Unified Provisioning（推荐 Security 2）把凭据在运行时安全下发并持久化",
+        "不提供任何'写死凭据'的实现示例"
+      ]
+    },
+    {
+      "id": "fw-core-01",
+      "prompt": "我想用 Rust 写一个 no_std 的传感器驱动，跑在 Cortex-M 上，用 Embassy，你们这个固件技能包能帮我吗？",
+      "expected_skills": [
+        "fw-core",
+        "rust-embedded"
+      ],
+      "assertions": [
+        "明确声明 firmware-skills 包不覆盖 Rust no_std 固件（refusal），不得用 ESP-IDF/C 知识硬答",
+        "显式移交到 rust-skills/rust-embedded，并说明该 Skill 覆盖 target/runtime、embedded-hal、Embassy/RTIC、烧写与硬件验收",
+        "不编造 Cortex-M 具体型号的内存布局或链接脚本"
+      ]
+    },
+    {
+      "id": "fw-core-02",
+      "prompt": "给 N1 刷机，我要一个能当 NAS 用的固件写到盒子的 eMMC 里。",
+      "expected_skills": [
+        "fw-core",
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "识别 N1（Phicomm N1，Amlogic S905D 盒子）属于 Amlogic 盒子写 eMMC 场景，主路由 openwrt-amlogic-remake",
+        "若需预装自定义服务/文件，说明 rootfs 侧先走 openwrt-image-build 产 rootfs.tar.gz，再交 remake 链，而不是只给 IB 直出镜像",
+        "在执行写 eMMC 前确认目标盘符并提示破坏性操作",
+        "引用'构建成功≠硬件可用'，无硬件证据时标注 Build Verification Only"
+      ]
+    },
+    {
+      "id": "fw-core-03",
+      "prompt": "ESP32-S3 项目，电池供电，要一年续航，另外量产前想加固件签名校验。这两个需求该用哪些技能，按什么顺序做？",
+      "expected_skills": [
+        "fw-core",
+        "esp32-lowpower",
+        "esp32-secureboot",
+        "esp32-variants",
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "续航需求路由 esp32-lowpower，并建议先用 esp32-variants 评估低功耗芯片型号",
+        "签名校验路由 esp32-secureboot（Secure Boot V2）",
+        "给出顺序：选型 → 低功耗设计 → 安全启动 → fw-hil-testing 实测验证",
+        "路由前先问 ESP-IDF 版本与模组型号（Contracts）"
+      ]
+    },
+    {
+      "id": "fw-core-04",
+      "prompt": "我手头还没收到板子，但想先把 ESP32 的业务逻辑跑通验证一下，有什么办法？",
+      "expected_skills": [
+        "fw-core",
+        "fw-emulation"
+      ],
+      "assertions": [
+        "识别'无板先跑'为模拟验证场景，路由 fw-emulation",
+        "说明模拟验证结果不等于硬件可用，后续仍需 fw-hil-testing 上板验收"
+      ]
+    },
+    {
+      "id": "fw-emulation-01",
+      "prompt": "手头还没有 N1 盒子，但想先确认我们改过的 OpenWrt 镜像能不能正常启动起来，有没有办法在电脑上先验一遍？",
+      "expected_skills": [
+        "fw-emulation"
+      ],
+      "assertions": [
+        "给出 QEMU boot 冒烟路径：armsr/armv8 combined-efi 镜像 + qemu-system-aarch64 -M virt -cpu cortex-a57 + UEFI 固件（QEMU_EFI.fd）+ virtio-blk + -nographic 串口",
+        "镜像来源口径：官方下载站 releases/<版本>/targets/armsr/armv8/ 的 combined-efi（文件名以下载站当版目录为准，不背文件名）或自建产物 bin/targets/armsr/armv8/，并说明 N1 可刷镜像属 remake 链、boot 冒烟证的是'能引导'这一层",
+        "冒烟判据：串口 boot log 引导到 OpenWrt shell 提示符、基础命令有响应、log 存档为证据",
+        "诚实完成标准：结论只能写 Boot/Build Verification Only，明确说不等于硬件可用，真机验收路由 fw-hil-testing",
+        "环境提醒：macOS 可本地跑 qemu（brew 安装），UEFI 固件路径因平台而异需运行时核验"
+      ]
+    },
+    {
+      "id": "fw-emulation-02",
+      "prompt": "在 QEMU 里 Wi-Fi 和有线网口的行为、吞吐跟真机一样吗？如果一致的话我就不买开发板了，直接信模拟结果。",
+      "expected_skills": [
+        "fw-emulation",
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "明确回答不一致：QEMU 只模拟 CPU/内存/块设备/体系结构层设备（virtio 网卡是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐都不被真实模拟",
+        "纠正'不买板子'的结论：模拟通过 = Build/Boot Verification Only，逻辑/引导层证据不能替代外设级真机证据",
+        "覆盖边界表口径：能证'引导+用户态活着'；Wi-Fi/eth 吞吐/eMMC/DTB 引脚行为一律'不一致'拒绝作答",
+        "路由 fw-hil-testing：外设行为、吞吐、长跑、功耗等硬件在环验收项列给 HIL",
+        "ESP32 侧同样诚实：QEMU 支持有限标 Pending verification，不做外设级仿真承诺"
+      ]
+    },
+    {
+      "id": "fw-emulation-03",
+      "prompt": "我们在 OpenWrt 固件里有一堆 shell 脚本业务逻辑（读系统信息、生成 ID、列文件），想在开发机上直接测，不想每次都刷板子或开 QEMU，怎么搭？",
+      "expected_skills": [
+        "fw-emulation"
+      ],
+      "assertions": [
+        "给出宿主级 env-var fixture 注入模式：被测脚本支持根路径环境变量覆盖（TINYNAS_SYSINFO_ROOT / TINYNAS_SHARE_ROOT 这类前缀变量仅作模式引用），变量有值读 fixture 目录、无值走生产默认路径",
+        "真实例指引：tinynas-files/tests/（run-lint.sh 静态门禁 + test-machine-id.sh fixture 注入行为测试）作为已验证模式参考，不复制项目专属产物",
+        "断言纪律：golden 期望值独立生成（注明日期+算法）、格式断言+精确断言并用、必配负向用例（路径穿越必须被拒）",
+        "静态门禁并列：sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/，一个入口全绿退出 0",
+        "证据分层汇报：宿主单测 = Host Test Only，不越级宣称镜像/硬件可用；ESP32 逻辑层用 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing"
+      ]
+    },
+    {
+      "id": "fw-hil-testing-01",
+      "prompt": "固件写完了，CI 上 build 也是绿的，这个状态怎么算可以发货？",
+      "expected_skills": [
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "指出 build 绿只是 Build Verification Only（B0），给出三级徽章判定 Build Verification Only → Boot Verified (QEMU) → HIL Verified，禁止越级声明",
+        "给出验收矩阵模板：每行 = 验收项/前置条件/操作/观察手段/预期/证据形式，要求逐行取证",
+        "矩阵必选覆盖五类行：上电启动、核心功能、异常路径（断电/断网/异常输入）、长时间运行（≥24h soak）、升级路径",
+        "证据纪律：截图/日志/测量值至少其一落文件，每份带设备标识+固件版本+日期",
+        "证据齐、打上 HIL Verified 后转 fw-release-gate 过发布门禁（sha256、命名、发布说明等）"
+      ]
+    },
+    {
+      "id": "fw-hil-testing-02",
+      "prompt": "我在 QEMU 里把启动和网页后台都点了一遍全没问题，这个版本直接发给渠道吧？",
+      "expected_skills": [
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "拒绝直接发货（refusal）：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级",
+        "说明 QEMU 覆盖不了的证据类型：真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化",
+        "给出补齐路径：跑最小真机矩阵（上电/核心功能/断电/soak/升级）取得 B2 证据后再回发布门禁",
+        "QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档，若进内部/测试渠道须显式标注非 HIL 级"
+      ]
+    },
+    {
+      "id": "fw-hil-testing-03",
+      "prompt": "ESP32 烧录完之后串口一点输出都没有，是不是砖了？",
+      "expected_skills": [
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "先定类再动手：构建失败/烧录失败/功能失败三分类，不在硬件上反复盲刷",
+        "排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区对？）→ 换已知良好镜像验证板是否响应",
+        "提醒 Pre-Flash 红线：bootloader/校准区/NVS 不碰；若烧前未留存回退镜像，后续每步风险升级",
+        "路由正确：板能响属镜像问题转构建侧（fw-emulation 分离镜像 vs 板），有输出但崩溃/复位转 esp32-debug，盒子类完全无响应转 openwrt-serial-recovery"
+      ]
+    },
+    {
+      "id": "fw-hil-testing-04",
+      "prompt": "给 N1 盒子刷了新版 OpenWrt，发货之前真机上要验收哪些东西？要跑多久？",
+      "expected_skills": [
+        "fw-hil-testing"
+      ],
+      "assertions": [
+        "按网关型矩阵实例化：上电到可用、存储挂载、核心服务、Web 后台逐行验收",
+        "异常路径必须真做：断电循环（如 10 次拔电）、断网降级、异常输入（满盘/畸形配置）",
+        "长时间运行：≥24h soak 起步，采样内存/温度/服务存活/重启计数",
+        "升级路径：升级成功+升级中断电回退，并演练回退镜像/ddbr 恢复",
+        "Pre-Flash：烧前留存当前可用固件备份（ddbr），bootloader/校准区不碰",
+        "单台全绿只是 G1 工程样机级，批量按 G1→G2→G3→G4 商业门禁逐级放行（激活率/启动率/退款率类指标在小批量阶段观察）"
+      ]
+    },
+    {
+      "id": "fw-release-gate-01",
+      "prompt": "镜像马上要发给渠道了，发之前到底要检查哪些东西？",
+      "expected_skills": [
+        "fw-release-gate"
+      ],
+      "assertions": [
+        "给出可脚本化检查单：产物存在+sha256 成对且门禁重算一致、命名 lint、零外链扫描、密钥扫描、回滚预案、HIL 徽章达标、发布说明含已知问题、LICENSE 清单",
+        "命名按五段式模板核对（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），文件名与构建记录一致，不手填日期",
+        "徽章门槛：渠道版必须 ≥ HIL Verified；Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注",
+        "要求负向验证：故意破坏一项（改名/篡改镜像/删 .sha256），门禁必须能拦截",
+        "任一项失败修复后重跑全单，不是只补失败项"
+      ]
+    },
+    {
+      "id": "fw-release-gate-02",
+      "prompt": "签名私钥放 CI 的环境变量里就行吧？我们 CI 仓库是私有的，外人看不到。",
+      "expected_skills": [
+        "fw-release-gate"
+      ],
+      "assertions": [
+        "明确拒绝（refusal）：CI 明文环境变量会进日志、被子进程继承、落进镜像层，私有仓库不改变泄露面",
+        "给出治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查",
+        "给出非对称模式：固件只嵌公钥（或公钥摘要）、私钥仅构建/签名机、渠道子密钥分发",
+        "若私钥已配置过：按已泄露处理（停用→评估作废/轮换→复盘），不是删掉变量就完事",
+        "ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot，不混在发布流程里展开"
+      ]
+    },
+    {
+      "id": "fw-release-gate-03",
+      "prompt": "我们有两个渠道的固件，能不能共用同一把签名密钥？省事。",
+      "expected_skills": [
+        "fw-release-gate"
+      ],
+      "assertions": [
+        "给出模式级决策：单根钥跨渠道 = 单点泄露全线沦陷，且无法只作废一个渠道",
+        "推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥",
+        "一句话边界声明：对称短码方案=固件含铸码能力（提取固件即可铸码），非对称=提取固件不可铸码——商业授权优先非对称",
+        "放行前置：子钥作废/轮换预案成文；多渠道镜像各自走发布门禁（校验和、命名渠道段、徽章）"
+      ]
+    },
+    {
+      "id": "fw-release-gate-04",
+      "prompt": "代码一行没改，两次构建出来的镜像 sha256 却不一样，这版还能发吗？",
+      "expected_skills": [
+        "fw-release-gate"
+      ],
+      "assertions": [
+        "不直接放行：先说明不可复现的常见来源——覆盖层时间戳/随机 ID、ipk 仓库版本漂移、host 工具差异",
+        "给出验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希，机制细节路由 openwrt-image-build 的 reproducible-build",
+        "门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic",
+        "发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分"
+      ]
+    },
+    {
+      "id": "fw-toolchain-01",
+      "prompt": "我在 macOS 上开发，要给 N1 的 OpenWrt（aarch64）交叉编译一个纯 Rust 的静态小工具，工具链该怎么装？",
+      "expected_skills": [
+        "fw-toolchain"
+      ],
+      "assertions": [
+        "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot（防头文件/libc/链接器版本错配）",
+        "宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式（与官方 IB 的 macOS 用法口径一致）",
+        "给出基准模式：容器内 rustup target add aarch64-unknown-linux-musl + 发行版安装宿主交叉 gcc（如 apt 安装 gcc-aarch64-linux-gnu）作链接器（注明该模式经实测项目 TinyNAS 实例验证，仅作模式引用）",
+        "版本锚定：target 与工具链锁进 rust-toolchain.toml 并入库；提醒纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）",
+        "产物实证：file 输出应为 ELF 64-bit aarch64 且 statically linked；三版本轴（本机/项目锁定/上游 latest）分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing"
+      ]
+    },
+    {
+      "id": "fw-toolchain-02",
+      "prompt": "编译 ESP32 固件的时候提示找不到 xtensa-esp-elf-gcc，我用 apt 直接装一个 xtensa 工具链是不是就解决了？",
+      "expected_skills": [
+        "fw-toolchain",
+        "esp32-idf"
+      ],
+      "assertions": [
+        "handoff 纠正：不照做——ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套，apt/brew 手装版本不受管控属版本漂移",
+        "正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）",
+        "工程侧安装/激活/CI 环境细节路由 esp32-idf，不在此复述其步骤",
+        "重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要",
+        "构建可复现性提醒：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追工具链 latest"
+      ]
+    },
+    {
+      "id": "fw-toolchain-03",
+      "prompt": "团队里每个人编译出来的固件行为都有一点不一样，怀疑是大家工具链版本不一致，怎么把它固定下来？",
+      "expected_skills": [
+        "fw-toolchain"
+      ],
+      "assertions": [
+        "三版本轴对表排查：本机轴（实测命令）/ 项目锁定轴（仓库锚定文件）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'），先定位漂在哪根轴",
+        "IDF 链锚定：提交 dependencies.lock + 固定 IDF 检出版本（tag/commit），managed_components 勿手改；IDF_VERSION 类锚定文件以项目仓库实际为准（运行时核验）",
+        "OpenWrt 链锚定：固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存，不追 latest",
+        "Rust/musl 链锚定：rust-toolchain.toml 入库 + 固定 target；修复方向是对齐项目锁定轴而不是集体升 latest",
+        "可复现性验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate"
+      ]
+    },
+    {
+      "id": "openwrt-amlogic-remake-01",
+      "prompt": "帮我编一个 s905d 的 DTB 文件，随便能启动就行",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "refusal: 拒绝编造 DTB 文件内容或文件名，明确说明这是反幻觉红线",
+        "指出 s905d 板型（如 Phicomm-N1）的 FDTFILE 已由板型库定义为 meson-gxl-s905d-phicomm-n1.dtb（model_database.conf L52）",
+        "说明 DTB 必须来自 ophub/kernel 对应版本的 dtb-amlogic-<ver>.tar.gz 包，remake 不生成 DTB",
+        "引导到上游板型库（ophub/amlogic-s9xxx-openwrt 提 PR）或运行时核验（下载 dtb 包核对文件名），而不是自行编写"
+      ]
+    },
+    {
+      "id": "openwrt-amlogic-remake-02",
+      "prompt": "我想给斐讯 N1 做一个 OpenWrt 镜像，具体该怎么做？",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "board id 使用 s905d（板型库第 14 列 BOARD），明确指出 -b n1 是错的",
+        "给出 remake 命令形态，如 sudo ./remake -b s905d -k 6.12.y（可带 -u/-s/-n 说明）",
+        "说明输入文件必须是 openwrt-armsr/*rootfs.tar.gz（find_openwrt 只认该目录）",
+        "提示需要 Linux root 环境，macOS/Windows 不可直跑，可路由 fw-emulation 或上游 GitHub Actions",
+        "产物为 openwrt_amlogic_s905d_k*.img.gz，eMMC 安装由镜像内晶晨宝盒（luci-app-amlogic）完成而非 remake"
+      ]
+    },
+    {
+      "id": "openwrt-amlogic-remake-03",
+      "prompt": "小米盒子3 能不能把系统写进 eMMC？",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "指出板型库中没有 s905-H（小米盒子3 SoC）专属行（grep s905h 无结果，走读 2026-09-02）",
+        "说明可参考通用板型 id s905（model_database.conf L207，meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb）",
+        "说明 S905-H 世代设备 eMMC 写入普遍受限、U 盘启动是可靠路径；上游文档仅保证 USB 启动优先于 eMMC（documents/README.cn.md L671）",
+        "不替用户断言具体设备可写 eMMC，建议运行时核验（TTL 观察/写入测试），未验证结论标注 Pending HIL"
+      ]
+    },
+    {
+      "id": "openwrt-amlogic-remake-04",
+      "prompt": "remake 跑起来就报 The [ n1 ] configuration not found!，是我参数写错了吗",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "确认是 -b 参数值错误：remake 匹配的是板型库第 14 列 BOARD，N1 的正确值是 s905d 不是 n1",
+        "给出修正命令 sudo ./remake -b s905d",
+        "说明查板方法：在 model_database.conf 里 grep 型号/别名，取第 14 列作为 -b 值（可多板用 _ 连接）",
+        "说明报错来源 confirm_version 在板型库中找不到匹配 BOARD 的行（remake L687-692）"
+      ]
+    },
+    {
+      "id": "openwrt-image-build-01",
+      "prompt": "帮我把这几个自定义脚本和网页塞进 OpenWrt 固件镜像里，另外 FILES= 会删掉 rootfs 里已有的文件吗？我担心把系统文件弄丢。",
+      "expected_skills": [
+        "openwrt-image-build"
+      ],
+      "assertions": [
+        "正确回答：FILES= 是覆盖式合并而非整包替换——同路径文件被覆盖、覆盖层未涉及的既有文件原样保留，不会删除 rootfs 里已有文件（依据 rootfs.mk prepare_rootfs 的 file_copy 语义）",
+        "说明合并前会先清除覆盖路径上的同名符号链接（rules.mk file_copy）",
+        "指出 FILES= 也无法用来删除文件；要移除内容用 PACKAGES= 的 -包名 语法",
+        "给出可复制的覆盖层目录结构与 make image FILES= 命令",
+        "提醒 init.d 脚本不要手放 /etc/rc.d/，IB 会按 rc.common shebang 自动 enable"
+      ]
+    },
+    {
+      "id": "openwrt-image-build-02",
+      "prompt": "我要给 N1 盒子做个固件写进 eMMC，你这个 Image Builder 直接能出盒子能刷的镜像吗？",
+      "expected_skills": [
+        "openwrt-image-build",
+        "openwrt-amlogic-remake"
+      ],
+      "assertions": [
+        "说明官方 IB 直出不产 Amlogic 盒子 eMMC 镜像，N1 场景需走 ophub 重打包链",
+        "给出正确链路：本 Skill 产 armsr rootfs.tar.gz（PACKAGES/FILES 定制保留），再移交 openwrt-amlogic-remake 重打包",
+        "纠正'IB 输入是 rootfs.tar.gz'的误解：官方 IB 输入是 repositories.conf 提供的 ipk，rootfs.tar.gz 是开启 CONFIG_TARGET_ROOTFS_TARGZ 的产物",
+        "构建产物在真机验证前标注 Build Verification Only"
+      ]
+    },
+    {
+      "id": "openwrt-image-build-03",
+      "prompt": "用官方 Image Builder 编 x86 软路由镜像，去掉默认的 pppoe 拨号相关包，加上 docker 和 samba4，构建完怎么确认东西都进去了？",
+      "expected_skills": [
+        "openwrt-image-build"
+      ],
+      "assertions": [
+        "给出三层包列表组织方式与 PACKAGES='-ppp-mod-pppoe docker-... samba4...' 的追加/移除混合语法",
+        "构建前用 make info 实证 PROFILE、用 make manifest 预演清单",
+        "构建后核对 manifest/sha256sum 校验，验证产物存在且校验和通过",
+        "说明构建成功不等于硬件可用，真机验收移交 fw-hil-testing"
+      ]
+    },
+    {
+      "id": "openwrt-image-build-04",
+      "prompt": "IB 构建时报错 postinst script xxx has failed with exit code 1，然后镜像没出来，怎么回事？",
+      "expected_skills": [
+        "openwrt-image-build"
+      ],
+      "assertions": [
+        "解释根因：prepare_rootfs 会重放所有包的 postinst 脚本，任一非零退出即中止构建（rootfs.mk）",
+        "排查方向：覆盖层是否覆盖破坏了该 postinst 依赖的文件（如同名 UCI 配置语法错误）",
+        "建议用最小覆盖层二分定位，而不是删除报错日志绕过"
+      ]
+    },
+    {
+      "id": "openwrt-procd-init-01",
+      "prompt": "我想让 OpenWrt 开机自动运行我自己的守护进程 /usr/bin/myagent --config /etc/myagent.toml，init 脚本怎么写？写完怎么确认它真的在跑？",
+      "expected_skills": [
+        "openwrt-procd-init"
+      ],
+      "assertions": [
+        "给出的脚本以 #!/bin/sh /etc/rc.common 开头并声明 USE_PROCD=1 与 START/STOP",
+        "在 start_service() 里用 procd_open_instance/procd_close_instance 包裹实例",
+        "命令参数逐个传递：procd_set_param command /usr/bin/myagent 后用 procd_append_param command --config /etc/myagent.toml，而不是把整条命令行塞进一个带引号的参数",
+        "说明 /etc/init.d/myagent enable 需要脚本里有 START，否则 enable 失败",
+        "给出设备端验证命令（status、logread | grep procd），并在无设备时标注 Build Verification Only",
+        "不引导用户手写 /etc/rc.d/ 符号链接"
+      ]
+    },
+    {
+      "id": "openwrt-procd-init-02",
+      "prompt": "我把启动脚本直接放到 Image Builder 覆盖层的 files/etc/rc.d/S99myagent，这样开机就会跑了吧？",
+      "expected_skills": [
+        "openwrt-procd-init",
+        "openwrt-image-build"
+      ],
+      "assertions": [
+        "明确拒绝手放 /etc/rc.d/ 链接进覆盖层的做法",
+        "解释 Image Builder 在构建期 prepare_rootfs 会自动 enable 带 rc.common shebang 的 init 脚本，因此应把脚本放 files/etc/init.d/ 并写好 shebang 与 START",
+        "提示需要禁用自启时用 DISABLED_SERVICES 而不是删链接",
+        "把 Image Builder 细节 hand-off 给 openwrt-image-build 技能"
+      ]
+    },
+    {
+      "id": "openwrt-procd-init-03",
+      "prompt": "我的 init 脚本开机没有生效，但手动执行 /etc/init.d/tinynas-boot start 是可以跑的，怎么回事？",
+      "expected_skills": [
+        "openwrt-procd-init"
+      ],
+      "assertions": [
+        "按顺序排查：先查第一行是否为 #!/bin/sh /etc/rc.common，再查是否定义了 START",
+        "指出 enable() 在无 START/STOP 时返回失败、不生成 /etc/rc.d 链接（rc.common L44-54 语义）",
+        "用 ls -l /etc/rc.d/ 与 /etc/init.d/<name> enabled 验证链接是否存在",
+        "区分'没 enable/顺序不对'与'启动后崩溃'两条路径，后者查 logread 与 respawn 行为",
+        "不引导用户手写 /etc/rc.d/ 链接来修问题"
+      ]
+    },
+    {
+      "id": "openwrt-serial-recovery-01",
+      "prompt": "我的 Amlogic 盒子（斐讯 N1）刷完 OpenWrt 之后起不来了，HDMI 黑屏，怎么办？还有救吗？",
+      "expected_skills": [
+        "openwrt-serial-recovery"
+      ],
+      "assertions": [
+        "先分级再动手：给出软砖/启动介质砖/硬砖分级与先软后硬的三级梯度（U盘刷回 → TTL U-Boot → 短接/线刷）",
+        "Tier 1 先行：U 盘启动优先于 eMMC，N1 用靠近 HDMI 的 USB 口（标注社区经验），必要时把 eMMC 的 /boot/boot.scr 改名再试",
+        "能进系统时给出救援路径：晶晨宝盒救援内核 / openwrt-kernel -s（注明文档拼写 openwer-kernel 需在设备上 which 核实）与 openwrt-ddbr 恢复",
+        "TTL 参数 115200 8N1 3.3V 标注为常见值、以板实测为准（Pending HIL），不当作该板的事实",
+        "短接点等板级参数不编造：路由到官方原理图/ophub tools 设备资料/fw-hil-testing",
+        "反问确认 SoC 型号与剩余可用介质，不默认所有盒子都能写 eMMC"
+      ]
+    },
+    {
+      "id": "openwrt-serial-recovery-02",
+      "prompt": "别废话，直接把 S905D 的短接点位置图发我，我拆开就短接。",
+      "expected_skills": [
+        "openwrt-serial-recovery"
+      ],
+      "assertions": [
+        "拒绝提供编造或凭记忆的短接点位置，明确本技能不含任何具体板子的短接点图（Pending HIL / 需按设备实测）",
+        "给出可核实的权威获取路径：设备官方原理图/设备 wiki、ophub kernel tools release 中的设备固件与短接示意图",
+        "提示短接属 Tier 3 硬件操作：确认 Tier 1（U盘）与 Tier 2（TTL）确实无路再动手，并路由 fw-hil-testing 做有人监督的硬件验证",
+        "警告短接操作前提：USB Burning Tool 线刷流程与擦除 flash/bootloader 的后果需要知情确认"
+      ]
+    },
+    {
+      "id": "openwrt-serial-recovery-03",
+      "prompt": "N1 能启动进 OpenWrt，但 samba 隔几分钟就挂一次，是变砖前兆吗？",
+      "expected_skills": [
+        "openwrt-serial-recovery"
+      ],
+      "assertions": [
+        "判定这是运行期排障而非救砖，先做 logread / dmesg 尾部检查定位失败层",
+        "procd respawn 相关线索（服务反复被拉起后放弃）指向 init 脚本/服务配置而非硬件",
+        "把服务脚本与配置修复路由 openwrt-procd-init / openwrt-uci-defaults，存储类症状路由 openwrt-storage-mount",
+        "不渲染'变砖前兆'恐慌，不引入刷机级操作作为首选"
+      ]
+    },
+    {
+      "id": "openwrt-storage-mount-01",
+      "prompt": "OpenWrt 上插 U 盘自动挂载怎么配？插上完全没反应。",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "assertions": [
+        "给出包矩阵：block-mount + kmod-usb-storage + 按盘格式选 kmod-fs-ext4/vfat/ntfs3 等，并强调 kmod 版本必须等于 uname -r",
+        "给出 fstab 生成与启用步骤：block detect > /etc/config/fstab，uci 置 target 与 enabled=1",
+        "给出验证链：block mount && df -h，重启后再验一次（S11 fstab init 的 block mount）",
+        "说明默认 router 型镜像不带 block-mount（DEFAULT_PACKAGES.nas 才含），首启 uci-defaults 10-fstab 只在 fstab 不存在时生成草稿"
+      ]
+    },
+    {
+      "id": "openwrt-storage-mount-02",
+      "prompt": "我想自己写一个 /etc/hotplug.d/block/ 脚本，U 盘一插进去就自动 mount 到 /mnt/usb，帮我看下怎么写。",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "assertions": [
+        "handoff/correction: 纠正\"hotplug 里直接 mount\"的做法，说明 block-mount 的 10-mount 已拥有挂载权（add/remove → /sbin/block hotplug），自写挂载会与之竞争（双挂载/umount 互踩）",
+        "给出正确模式：脚本序号 >10（如 50-），只做补充动作（打点/扫描/通知），绝不 mount",
+        "挂载需求引导回 fstab UCI（block detect + enabled=1）作为挂载的唯一事实源",
+        "引用或复现 50-tinynas-disk 的真实模式：先过滤 ACTION=add 与 DEVNAME，动作后台化，工具存在才调用",
+        "构建期固化该脚本进镜像的建议 hand-off 到 openwrt-image-build"
+      ]
+    },
+    {
+      "id": "openwrt-storage-mount-03",
+      "prompt": "lsusb 能看到 U 盘但 /mnt 下什么都没有，dmesg 里有 unknown filesystem，这是哪里的问题？",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "assertions": [
+        "定位为缺文件系统 kmod：unknown filesystem 说明存储链路已通（usb-storage 已加载），缺的是对应 fs 模块",
+        "按盘格式给包：FAT32→kmod-fs-vfat、exFAT→kmod-fs-exfat、NTFS→kmod-fs-ntfs3、ext4→kmod-fs-ext4",
+        "提醒 kmod 版本必须与 uname -r 精确匹配，跨版本 insmod 拒绝加载",
+        "给出一句话能力边界：NTFS/exFAT 能挂能写，但坏块隔离/自愈是 ext4 原生能力，长期数据盘优先 ext4",
+        "排查顺序遵循 kmod（盘可见）→ fstab（enabled）→ block mount → 重启验证"
+      ]
+    },
+    {
+      "id": "openwrt-uci-defaults-01",
+      "prompt": "怎么让我的 OpenWrt 镜像第一次开机就把 uHTTPd 的 docroot 固定成 /www/nas、时区改成 Asia/Shanghai？",
+      "expected_skills": [
+        "openwrt-uci-defaults"
+      ],
+      "assertions": [
+        "给出放在 files/etc/uci-defaults/ 下的数字前缀命名脚本（如 50-nas-uhttpd）",
+        "脚本幂等：先探测再写入（uci -q get ... || uci set ...），所有路径以 exit 0 结束",
+        "解释 init.d/boot 在 S10 首启执行脚本、成功后才删除、失败保留重跑的生命周期",
+        "说明时区用 system.@system[0] 的 timezone/zonename",
+        "给出首启验证：ls /etc/uci-defaults/ 应为空、uci get 确认生效，无设备时标注 Build Verification Only",
+        "不引导在脚本里写网络下载或覆盖 init 脚本管理的键"
+      ]
+    },
+    {
+      "id": "openwrt-uci-defaults-02",
+      "prompt": "我在 uci-defaults 脚本里用 curl 从我们服务器下载一份配置文件再 uci import，这样首次开机自动拉最新配置，可以吗？",
+      "expected_skills": [
+        "openwrt-uci-defaults"
+      ],
+      "assertions": [
+        "明确拒绝：首启可能无 WAN，脚本会失败并被保留反复重跑",
+        "指出这破坏镜像构建的确定性与可复现性，且引入供应链/隐私风险（远程内容以 root 执行、可能携带敏感回连）",
+        "给出替代：把配置在构建期作为预置最终文件或 uci-defaults 随镜像分发，构建期细节路由 openwrt-image-build",
+        "不提供任何'等网络再重试'的 uci-defaults 变通实现作为主方案"
+      ]
+    },
+    {
+      "id": "openwrt-uci-defaults-03",
+      "prompt": "为什么我的 /etc/uci-defaults/99-setup 脚本每次开机都在跑？文件一直没被删掉。",
+      "expected_skills": [
+        "openwrt-uci-defaults"
+      ],
+      "assertions": [
+        "解释 uci_apply_defaults 只删除成功退出（exit 0）的脚本，失败的保留并在下次开机重跑（boot L14-19）",
+        "教用户手动执行 (. /etc/uci-defaults/99-setup); echo $? 复现失败退出",
+        "列出常见失败原因：目标 /etc/config 文件不存在、中间命令非零退出、缺少最终 exit 0",
+        "要求修复后验证幂等：连续跑两次均 exit 0 且配置收敛",
+        "不建议用脚本自删（rm $0）来绕过失败"
+      ]
+    }
+  ]
+}
