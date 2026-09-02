@@ -1,0 +1,36 @@
+[
+  {
+    "id": "esp32-debug-01",
+    "prompt": "我们现场部署的 ESP32 设备每天随机重启一两次，日志什么都抓不到，头都大了，怎么排查？",
+    "expected_skills": ["esp32-debug"],
+    "assertions": [
+      "先走复位原因分类决策树：看门狗复位 vs panic vs 掉电/供电三类，判据与证据链各不相同，不预设结论",
+      "指出证据缺失根因：未配置 coredump 时崩溃现场会被下一次重启覆盖；先补 coredump 配置（flash 或 UART 目的地）再等复现",
+      "给出提取与分析命令：idf.py coredump-info 概览 → idf.py coredump-debug 符号化，且强调须用与设备一致版本的 ELF",
+      "软件侧只收集硬件嫌疑证据（重启与负载/外设动作的相关性、多台同规律性），不下'供电问题'结论",
+      "建议加心跳埋点与复位原因持久化记录，缩小无声重启时间窗"
+    ]
+  },
+  {
+    "id": "esp32-debug-02",
+    "prompt": "按你们的排查树做下来了：软件日志很干净，重启都发生在电机启动的瞬间，好几台设备都是这个规律，我们是不是该查供电？",
+    "expected_skills": ["esp32-debug", "fw-hil-testing"],
+    "assertions": [
+      "确认软件侧证据链已穷尽且指向硬件嫌疑（重启与电机启动强相关、多台同规律），但明确不下'供电问题'定论——软件侧只能给嫌疑证据",
+      "hand-off fw-hil-testing：真机在环用电源测量/示波器验证电压跌落或复位信号异常，出硬件验收证据",
+      "提示可同时准备的软件侧缓解观察项（如电机启动与敏感操作的时序错开）仅作假设，不以未测量结论交付",
+      "修复后的定论须有实测记录；无硬件证据标注 Pending HIL"
+    ]
+  },
+  {
+    "id": "esp32-debug-03",
+    "prompt": "我买了调试器想单步调试 ESP32，用 SWD 接口连上去就行了吧？",
+    "expected_skills": ["esp32-debug"],
+    "assertions": [
+      "纠正：经典 ESP32 不支持 SWD，调试走 JTAG，需要外部适配器（如 ESP-Prog）——经典 ESP32 无内置 USB-Serial/JTAG（基线高置信）",
+      "给出正确路径：OpenOCD 随 IDF 安装，openocd -f board/<目标板>.cfg 启动，GDB 连接后验证断点/单步/变量查看",
+      "接线与 TCK 频率标注'以板与探测器件实测'，不编造具体引脚号或频率数值",
+      "若无探测器：提示运行时 GDB stub（CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME）可作无 JTAG 硬件的串口 GDB 手段"
+    ]
+  }
+]

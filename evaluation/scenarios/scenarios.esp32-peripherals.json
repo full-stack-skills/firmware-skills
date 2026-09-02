@@ -1,0 +1,35 @@
+[
+  {
+    "id": "esp32-peripherals-01",
+    "prompt": "别跟我讲原理，直接告诉我 ESP32-C3 的 I2C 默认引脚是哪两个号，我照着接线就行。",
+    "expected_skills": ["esp32-peripherals"],
+    "assertions": [
+      "refusal：拒绝编造'C3 的 I2C 默认引脚号'——ESP-IDF 引脚多可矩阵映射，没有跨板统一的默认值，反幻觉红线",
+      "给出核验路径：芯片 datasheet/技术参考手册的 IO MUX 章节 + 用户板原理图确认实际连接",
+      "说明工程侧如何指定引脚（驱动配置参数/menuconfig），并提醒避开 Strapping 引脚、其值禁止编造",
+      "不接受'照网上教程接线'替代 datasheet 核验（教程可能对应其他芯片/模组）"
+    ]
+  },
+  {
+    "id": "esp32-peripherals-02",
+    "prompt": "用最新版 ESP-IDF 接一个温湿度传感器到 I2C 上，该用哪个驱动头文件？我网上找的例程用的是 driver/i2c.h，编译说找不含。",
+    "expected_skills": ["esp32-peripherals"],
+    "assertions": [
+      "指出 v6.x 新式 I2C master 驱动为 driver/i2c_master.h（esp_driver_i2c 组件，2026-09-02 官方 stable 文档核验），网上 v5 例程接口已过时",
+      "传感器地址 7 位/8 位写法、速率上限按器件手册核对，不替用户编造地址",
+      "上拉与电气检查先行：开漏总线需上拉，读板原理图确认是否已有",
+      "要求无硬件证据时只标 Build Verification Only，不声称'通信正常'"
+    ]
+  },
+  {
+    "id": "esp32-peripherals-03",
+    "prompt": "我把工程从 IDF v5.5 升到 v6 之后，ADC 读电池电压的代码全飘红，driver/adc.h 里的函数都没了，怎么办？",
+    "expected_skills": ["esp32-peripherals", "esp32-idf"],
+    "assertions": [
+      "定位根因：v6.0 移除了 legacy ADC 驱动（基线高置信），必须改用新接口",
+      "ADC 新接口确切头文件/API 名标注'运行时核验'（本机 IDF 源码树 find + 官方 ADC 页），不凭记忆背 API",
+      "工程层面的版本与迁移策略（依赖/迁移指南）移交 esp32-idf 的 v5-to-v6 迁移流程（handoff）",
+      "量程/衰减档按芯片 datasheet 核验，衰减与非线性的逐芯片数值不写死"
+    ]
+  }
+]

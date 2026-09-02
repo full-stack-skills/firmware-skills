@@ -1,0 +1,35 @@
+[
+  {
+    "id": "esp32-freertos-01",
+    "prompt": "我在 ESP-IDF 里 xTaskCreate 传的栈大小是 1024，任务老是不定时重启，是不是栈不够？给我一个安全的栈数值。",
+    "expected_skills": ["esp32-freertos"],
+    "assertions": [
+      "指出 IDF FreeRTOS 的栈参数单位是字节（1024=1KB），与上游 FreeRTOS 的'字'不同（基线高置信差异点）",
+      "拒绝拍脑袋给'安全数值'：栈大小是项目决策，给保守值+高水位实测+逐步收紧的验证方法",
+      "排障顺序：复现记录→字节换算检查→优先级/忙等检查→一次只改一个维度",
+      "崩溃现场取证（backtrace/coredump）显式移交 esp32-debug（handoff），不在本技能内假装能定位崩溃原因"
+    ]
+  },
+  {
+    "id": "esp32-freertos-02",
+    "prompt": "双核的 ESP32 上我想保护一段共享数据，同事说在读写前后调 vTaskSuspendAll/resumeAll 就行，这样写对吗？",
+    "expected_skills": ["esp32-freertos"],
+    "assertions": [
+      "明确指出不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核，不能当互斥用（基线明确）",
+      "给正确方案：任务间互斥用互斥量（优先级继承），极短临界区用 portMUX 自旋锁（持锁不阻塞）",
+      "不编造'推荐栈/优先级'官方数值；优先级引用时带'默认 25，可配，以本项目 sdkconfig 为准'",
+      "建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状"
+    ]
+  },
+  {
+    "id": "esp32-freertos-03",
+    "prompt": "ESP32-S3 项目里有十几个任务全绑在 Core 0，感觉系统核负载很高，怎么重新分配？",
+    "expected_skills": ["esp32-freertos"],
+    "assertions": [
+      "先说明核语义：S3 是 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务（基线高置信）",
+      "读 smp-pinning 决策树：无明确理由不绑核是默认起点；绑核要有目的（隔离抖动/ISR 归属）",
+      "不凭印象断言'某协议栈固定跑哪个核'，要求实测负载分布",
+      "改绑核后要求长稳压测验证，无硬件证据标注 Build Verification Only"
+    ]
+  }
+]

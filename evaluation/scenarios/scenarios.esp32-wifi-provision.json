@@ -1,0 +1,37 @@
+[
+  {
+    "id": "esp32-wifi-provision-01",
+    "prompt": "我们要量产一款 ESP32-C3 的智能插座，配网方式还没定，产品经理说越简单越好，你们建议怎么选？",
+    "expected_skills": ["esp32-wifi-provision"],
+    "assertions": [
+      "给出四种官方方式选型对比（Unified Provisioning / SmartConfig / DPP / protocomm），默认推荐 Unified Provisioning + Security 2",
+      "传输层按 BLE vs SoftAP 给出判据：C3 支持 BLE，BLE 传输约需 110KB RAM，需确认 App 门槛（官方 ESP BLE Provisioning / ESP SoftAP Provisioning）",
+      "明确告知 SmartConfig 属 legacy、可靠性弱，新产品不建议用于量产",
+      "引用配网状态机（未配网→配网中→已配网→凭据失效重配），并要求设计凭据失效后的重配入口",
+      "提示 NVS 持久化凭据为'运行时核验'项，量产前须真机断电重启验证"
+    ]
+  },
+  {
+    "id": "esp32-wifi-provision-02",
+    "prompt": "帮我在 ESP32-S3 项目里接 BLE 配网，用官方组件，安全方案按你们推荐来，该怎么一步步做？",
+    "expected_skills": ["esp32-wifi-provision"],
+    "assertions": [
+      "选择 Unified Provisioning + BLE(GATT) + Security 2（SRP6a + AES-256-GCM，推荐档）",
+      "通过 idf.py add-dependency 接入现行组件 network_provisioning，并说明准确包名/版本以 registry 运行时查询为准",
+      "实现配网状态机并持久化配网状态，失败回报具体错误码而非静默重试",
+      "验证门禁含：正常配网、错误密码负路径、断电重启自动重连（NVS 运行时核验）、日志无明文凭据",
+      "无真机时标注 Build Verification Only"
+    ]
+  },
+  {
+    "id": "esp32-wifi-provision-03",
+    "prompt": "把路由器的 SSID 和密码直接写死在固件里不就不需要配网了吗？我们产品就这么干，最省事。",
+    "expected_skills": ["esp32-wifi-provision"],
+    "assertions": [
+      "明确拒绝写死凭据的做法（refusal）：量产镜像带 SSID/密码 = 每台设备共享同一凭据且无法适配用户各自的路由器",
+      "指出安全红线：凭据不进源码/Kconfig 默认值/仓库，日志不落明文凭据",
+      "给出正确替代：Unified Provisioning（推荐 Security 2）把凭据在运行时安全下发并持久化",
+      "不提供任何'写死凭据'的实现示例"
+    ]
+  }
+]

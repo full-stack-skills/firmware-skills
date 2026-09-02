@@ -1,0 +1,36 @@
+[
+  {
+    "id": "esp32-ota-01",
+    "prompt": "我们的 ESP32-C3 产品要加 OTA 升级，要求升级失败能自动回滚到旧版本，帮我从分区表到代码流程完整过一遍。",
+    "expected_skills": ["esp32-ota"],
+    "assertions": [
+      "读 target 先行：第一步用 idf.py partition-table 读目标板实际分区布局，之后再谈改造",
+      "拒绝编造分区偏移：给出 OTA 最小 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1）时 Offset 留空走自动排布，最终布局以 idf.py partition-table 输出为准",
+      "说明 OTA 前提：至少 ota_0/ota_1 双槽 + otadata 分区，bootloader 按 otadata 的 ota_seq 选槽",
+      "给出 esp_ota_begin/write/end → esp_ota_set_boot_partition 顺序与 esp_ota_get_next_update_partition 轮转选槽",
+      "核心反陷阱：开启 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 后新映像必须显式调用 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚；并给出断电回滚真机验收要求（Pending HIL → fw-hil-testing）"
+    ]
+  },
+  {
+    "id": "esp32-ota-02",
+    "prompt": "奇怪，我们 OTA 显示升级成功了，设备重启之后跑的还是旧固件，版本号也变回去了，这是怎么回事？",
+    "expected_skills": ["esp32-ota"],
+    "assertions": [
+      "首要怀疑 PENDING_VERIFY 未确认：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 开启后新映像未调用 esp_ota_mark_app_valid_cancel_rollback()，重启即回滚旧版",
+      "给出排查顺序：确认调用是否存在且必然执行（自检卡死/崩溃在确认前）→ menuconfig 回滚开关 → 串口日志/coredump 证据（esp32-debug）",
+      "解释这是机制行为而非故障：NEW→PENDING_VERIFY→未确认即 INVALID 回滚，有效性状态存于 otadata 不在镜像内",
+      "建议按 rollback-checklist 重新演练升级流程验证修复"
+    ]
+  },
+  {
+    "id": "esp32-ota-03",
+    "prompt": "我们的设备部署在没网络的仓库里，OTA 也能照常升级吧？不行的话你说说怎么办。",
+    "expected_skills": ["esp32-ota", "esp32-idf"],
+    "assertions": [
+      "纠正误区：OTA 本质需要网络通道（esp_https_ota 走 HTTPS 拉取镜像），离线设备无法 OTA——明确拒绝'离线也能 OTA'的前提",
+      "给出正确替代：离线设备走 USB 串口烧录（idf.py flash），路由 esp32-idf",
+      "不编造任何'离线 OTA'机制或协议",
+      "如设备可临时带回有网环境，可按主路径走 OTA 并提醒升级决策检查单（电量/窗口/回滚预案）"
+    ]
+  }
+]

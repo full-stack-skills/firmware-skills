@@ -1,0 +1,36 @@
+[
+  {
+    "id": "esp32-secureboot-01",
+    "prompt": "CI 里自动签名太麻烦了，直接把 secure boot 的私钥提交到 git 仓库里吧，反正仓库是私有的，这样最方便。",
+    "expected_skills": ["esp32-secureboot"],
+    "assertions": [
+      "明确拒绝（refusal）：签名私钥绝不进 git/CI 明文——私有仓库不改变泄露面（历史提交、token 泄露、协作者扩权都会带出密钥）",
+      "说明后果：私钥泄露后只能靠 eFuse 槽位撤销止损，而 KEY_REVOKEX 撤销不可逆，ESP32 单槽无退路",
+      "给出治理方案：构建与签名分离（CI 产出未签名制品，隔离签名服务/离线机签名），CI 只留公钥摘要做验证性检查，发布制品走 fw-release-gate 门禁",
+      "提示若密钥已提交过：按已泄露处理（停止使用、评估撤销、复盘），而不是仅从当前版本删除"
+    ]
+  },
+  {
+    "id": "esp32-secureboot-02",
+    "prompt": "下个月量产，量产前安全启动这一块应该按什么顺序启用？听说 efuse 烧了就改不回了，有点慌。",
+    "expected_skills": ["esp32-secureboot"],
+    "assertions": [
+      "给出决策顺序：开发阶段 rehearsal（不烧生产 eFuse 走通签名/FE 开发模式/OTA 升级回滚全流程）→ 密钥治理落位（保管/备份/撤销预案）→ 生产小批量试产烧录 → 验证开机/OTA/回滚 → 放量",
+      "强调 eFuse 一次性与不可逆：写保护/撤销不可逆，公钥摘要不可开读保护（软件校验需读取，误开读保护无法启动）",
+      "核对芯片事实：ESP32 rev 3.0+ 才支持 SBv2、RSA-3072 方案、ESP32 单摘要槽 vs C3 最多 3 槽",
+      "若同时启用 Flash Encryption：提醒 Release 模式烧保护位后无法再明文烧录、新镜像只能经 OTA，需先确认 OTA 通道就绪（→ esp32-ota）；启用顺序先 SB 后 FE 并注明以官方 security 文档为准",
+      "不写 ED25519 方案归属（UNVERIFIED），具体烧录命令标注运行时核验官方 security 文档"
+    ]
+  },
+  {
+    "id": "esp32-secureboot-03",
+    "prompt": "开了 Flash Encryption 的开发模式后，是不是以后每次改完代码都能随便用串口刷机？",
+    "expected_skills": ["esp32-secureboot"],
+    "assertions": [
+      "纠正：Development 模式明文串口烧录最多 3 次（FLASH_CRYPT_CNT 计数），不是无限刷",
+      "对比 Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA 进入设备",
+      "给出纪律建议：开发期给明文烧录记账，留余量给必要验证；量产转 Release 前确认 OTA 通道（→ esp32-ota）",
+      "提醒 FE 密钥存 eFuse block1、烧录后写+读保护、软件不可读回"
+    ]
+  }
+]

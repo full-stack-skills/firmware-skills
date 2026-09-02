@@ -1,0 +1,35 @@
+[
+  {
+    "id": "esp32-variants-01",
+    "prompt": "我要做一个支持 Matter 的智能灯，需要 Thread 和 Zigbee，最好还能连 Wi-Fi，选哪颗 ESP32？另外有款产品只要 Zigbee 不用 Wi-Fi，能用更省电的吗？",
+    "expected_skills": ["esp32-variants"],
+    "assertions": [
+      "按矩阵硬过滤：Wi-Fi + BLE + 802.15.4（Thread/Zigbee）三全 → ESP32-C6；只要 Zigbee/Thread 不要 Wi-Fi → ESP32-H2（BLE 5 + 802.15.4，Thread 1.3/Zigbee 认证）",
+      "走决策树路径并能回指（selection-tree），结论不超出矩阵事实",
+      "明确 Matter/Thread 协议栈实现属后续工程问题，芯片确定后移交 esp32-idf（handoff 语义）",
+      "引用能力事实带'截至 2026-09-02'基线口径，不脑补未列芯片细节"
+    ]
+  },
+  {
+    "id": "esp32-variants-02",
+    "prompt": "ESP32-C3 最低需要哪个版本的 ESP-IDF 才能开发？网上说法不一样，你直接告诉我个准数。",
+    "expected_skills": ["esp32-variants"],
+    "assertions": [
+      "refusal：拒绝写死'最低 IDF 版本'——基线明确该对照表 UNVERIFIED，官方无合并对照表",
+      "给出三步运行时核验法：stable 文档按 target 切换（/esp32c3/get-started/）→ GitHub release notes 查新增支持 → 本机 idf.py set-target esp32c3 + build 实测",
+      "说明'文档支持 ≠ 本机版本支持'，以实测为准",
+      "不用'网上说法'或模型记忆充当权威来源"
+    ]
+  },
+  {
+    "id": "esp32-variants-03",
+    "prompt": "听说 ESP32-P4 性能最强，我想拿它做一个直接连 Wi-Fi 6 的摄像头网关，可行吗？",
+    "expected_skills": ["esp32-variants"],
+    "assertions": [
+      "纠正高频错误：P4 无片上射频，不能自己连 Wi-Fi（基线点名错误点）",
+      "给正确路径：P4 经 ESP-Hosted/ESP-AT 用 C/S 系列芯片作伴生获得无线能力，架构成本需评估",
+      "Wi-Fi 6 需求指向 C6（802.11ax），对比单芯片方案与 P4+伴生方案",
+      "不做超出矩阵的细节断言（外设数量/GPIO 数等），引导查官方选型页与数据手册"
+    ]
+  }
+]
