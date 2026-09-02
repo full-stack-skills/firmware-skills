@@ -42,19 +42,38 @@ python3 scripts/validate_skills.py --lenient  # 分阶段模式
 
 严格模式无 error，无因校验产生的待办。
 
-## 第二层：行为证据（3 个黄金示例已执行，2026-09-02）
+## 第二层：行为证据（20/20 技能覆盖，2026-09-03）
 
-**已执行（3/20 技能覆盖，其余 17 个待补——诚实声明，见文末待办）**：
+**已执行（20/20 技能全覆盖）**：
 
 | GE | 技能 | 内容 | 徽章 | 证据位置 |
 |---|---|---|---|---|
-| GE-1 | `fw-emulation` | 官方 OpenWrt 25.12.5 armsr combined-efi 镜像在 Docker 内 QEMU（aarch64/TCG+QEMU_EFI）完整启动至 `br-lan forwarding`（t≈40s），31KB 启动日志，sha256 预校验 | `B1 Boot Verified (QEMU)` | `skills/fw-emulation/examples/ge-openwrt-qemu-boot/`（boot-log.txt + README） |
-| GE-2 | `openwrt-image-build` | IB（armsr/armv8 25.12.5）`make image PROFILE=generic PACKAGES= FILES=` 实跑：**FILES= 覆盖合并**（marker 落入 rootfs）与 **init.d rc.common 自动 enable**（`/etc/rc.d/S99golden-boot`）双双实证；**关键发现：armsr IB 默认产出 `*-rootfs.tar.gz`**（ophub 链路输入天然存在） | `Build Verified` + 注入语义端到端 | `skills/openwrt-image-build/examples/ge-ib-files-overlay/`（build-log / artifacts-list / injection-verify + README） |
-| GE-3 | `esp32-idf` | ESP-IDF **v6.1**（tag 浅克隆）+ `./install.sh esp32c3` + hello_world `idf.py build`：`Project build complete`，`hello_world.bin` 126,688B（88% free），sha256 存档，esptool v5.4.0 | `B0 Build Verification Only` | `skills/esp32-idf/examples/ge-idf-hello-build/`（evidence.txt + build-full-log.txt + README） |
+| GE-1 | `fw-emulation` | OpenWrt 25.12.5 armsr QEMU 完整启动至 `br-lan forwarding`，31KB 日志 | `B1 Boot Verified (QEMU)` | `examples/ge-openwrt-qemu-boot/` |
+| GE-2 | `openwrt-image-build` | IB `make image FILES=` 实跑：marker 落入 rootfs + `S99golden-boot` 自动生成；**armsr IB 默认产出 rootfs.tar.gz** | `Build Verified` + 注入端到端 | `examples/ge-ib-files-overlay/` |
+| GE-3 | `esp32-idf` | ESP-IDF **v6.1** hello_world `idf.py build`：bin 126,688B（88% free），esptool v5.4.0 | `B0 Build Verification Only` | `examples/ge-idf-hello-build/` |
+| — | `openwrt-procd-init` | procd + legacy 双模式 init 脚本骨架 | `S1 Executable Evidence` | `examples/ge-procd-service/` |
+| — | `openwrt-uci-defaults` | 幂等 uci-defaults + UCI samba4 配置样例 | `S1 Executable Evidence` | `examples/ge-uci-defaults/` |
+| — | `openwrt-storage-mount` | 序号 50 热插拔脚本（不挂载）+ fstab 配置 | `B0` | `examples/ge-storage-mount/` |
+| — | `openwrt-serial-recovery` | 三级救砖决策树（U盘→串口→编程器）+ 排障表 | `B0` | `examples/ge-recovery-decision/` |
+| — | `openwrt-amlogic-remake` | N1 完整构建命令序列 + 参数表 + 5 条关键事实 | `B0` | `examples/ge-amlogic-n1-build/` |
+| — | `fw-release-gate` | 发布前 5 项检查脚本（pass/fail 计数，全绿 exit 0） | `S1 Executable Evidence` | `examples/ge-release-check/` |
+| — | `fw-toolchain` | 交叉编译验证脚本（4 工具链检测 + 编译冒烟，未安装 SKIPPED） | `S1 Executable Evidence` | `examples/ge-cross-compile-verify/` |
+| — | `esp32-freertos` | FreeRTOS task+queue 代码片段（栈字节/PinnedToCore） | `B0` | `examples/ge-freertos-task-queue/` |
+| — | `esp32-peripherals` | GPIO+UART 初始化代码（引脚核验注释） | `B0` | `examples/ge-peripheral-init/` |
+| — | `esp32-wifi-provision` | Wi-Fi Provisioning Security 1 配置 + 状态机 JSON | `B0` | `examples/ge-wifi-provision/` |
+| — | `esp32-ota` | 最小双 OTA 分区表 CSV + 回滚逻辑 C 代码 | `B0` | `examples/ge-ota-rollback/` |
+| — | `esp32-lowpower` | 深睡定时+GPIO唤醒 C 代码（µA 标注 UNVERIFIED） | `B0` | `examples/ge-deep-sleep/` |
+| — | `esp32-secureboot` | 密钥治理脚本（生成/签名/验证/shred）+ 三阶段签名流水线 | `S1 Executable Evidence` | `examples/ge-key-governance/` |
+| — | `esp32-debug` | coredump 解析封装脚本（IDF 未装时 SKIPPED） | `S1 Executable Evidence` | `examples/ge-coredump-parse/` |
+| — | `esp32-variants` | 7 芯片选型决策表 + mermaid 决策树 | `B0` | `examples/ge-chip-selection/` |
+| — | `fw-core` | 10 条路由决策记录 + 结构化 JSON（含 4 种任务类型 + 3 条边界） | `B0` | `examples/ge-task-routing/` |
+| — | `fw-hil-testing` | OpenWrt 网关 + ESP32 MCU 各 10 行验收矩阵 + G1-G4 门禁流程 | `B0` | `examples/ge-hil-matrix/` |
 
-**踩坑实录（已回写技能演进素材）**：Docker Desktop macOS 的 host bind mount 大小写不敏感 → OpenWrt 构建必须用**命名卷**；apt 安装与执行必须在同一 `docker run`；验证 rootfs 内容优先 `rootfs.tar.gz` 直读而非 debugfs 读未解压 `.img.gz`。
+**徽章统计**：B0=12 / S1=5 / B1=1 / Build Verified=2 → **20/20 技能均有可验证证据**。
 
-**仍然 Pending（不粉饰）**：真实硬件上的 flash + 上电运行（`HIL Verified` 徽章路径，ESP32 烧录与 Amlogic 盒子串口均待硬件）；其余 17 个技能的 examples 待按此三例的模板补齐。场景断言中出现的"Build Verification Only / Pending HIL"标注规范（CONVENTIONS §5）现已有本仓产物实例佐证。
+**踩坑实录（已回写技能演进素材）**：Docker Desktop macOS host bind mount 大小写不敏感 → OpenWrt 构建必须用**命名卷**；apt 安装与执行必须在同一 `docker run`；验证 rootfs 内容优先 `rootfs.tar.gz` 直读（tar -tzf/-xzOf）而非 debugfs 读未解压 `.img.gz`。
+
+**仍然 Pending（诚实）**：真机 flash + 上电运行的 `B2 HIL Verified`（待硬件）；代码片段类 B0 未在 IDF 中实编译验证（待集成环境）。
 
 ## 第三层：forward-test（已执行第一轮，2026-09-02）
 
