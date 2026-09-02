@@ -42,13 +42,19 @@ python3 scripts/validate_skills.py --lenient  # 分阶段模式
 
 严格模式无 error，无因校验产生的待办。
 
-## 第二层：行为证据（Pending）
+## 第二层：行为证据（3 个黄金示例已执行，2026-09-02）
 
-如实记录当前状态，**本节无任何伪造的执行输出**：
+**已执行（3/20 技能覆盖，其余 17 个待补——诚实声明，见文末待办）**：
 
-- **OpenWrt 侧存在真实生产门禁先例**：TinyNAS 项目的 `tests/run-lint.sh` 模式（`sh -n` 全量语法 → uci-defaults 末行 `exit 0` → 禁手放 `/etc/rc.d/` → CGI 禁 `eval` → 无私钥入库，pass/fail 计数、全绿退出 0、任一失败退出 1），已作为模式提炼进 `fw-release-gate/references/release-checklist.md` 与 `fw-emulation/references/host-mocking.md`。该先例证明此类静态门禁在生产环境可落地。
-- **本仓 golden examples 尚未执行，标记 `Pending`**：20 个技能的 `examples/` 目录当前为空占位，本仓没有任何一次 QEMU 启动冒烟或 `idf.py` 构建在本仓产物上真实跑通。因此第二层证据为空，这是发布前的阻断项（对应 `PHASE-2-EVALUATION.md` Go/No-Go G5）。
-- 场景断言中出现的"Build Verification Only / Pending HIL"标注规范（CONVENTIONS §5）在文档层已落地并经结构校验，但其执行样例尚无本仓产物佐证。
+| GE | 技能 | 内容 | 徽章 | 证据位置 |
+|---|---|---|---|---|
+| GE-1 | `fw-emulation` | 官方 OpenWrt 25.12.5 armsr combined-efi 镜像在 Docker 内 QEMU（aarch64/TCG+QEMU_EFI）完整启动至 `br-lan forwarding`（t≈40s），31KB 启动日志，sha256 预校验 | `B1 Boot Verified (QEMU)` | `skills/fw-emulation/examples/ge-openwrt-qemu-boot/`（boot-log.txt + README） |
+| GE-2 | `openwrt-image-build` | IB（armsr/armv8 25.12.5）`make image PROFILE=generic PACKAGES= FILES=` 实跑：**FILES= 覆盖合并**（marker 落入 rootfs）与 **init.d rc.common 自动 enable**（`/etc/rc.d/S99golden-boot`）双双实证；**关键发现：armsr IB 默认产出 `*-rootfs.tar.gz`**（ophub 链路输入天然存在） | `Build Verified` + 注入语义端到端 | `skills/openwrt-image-build/examples/ge-ib-files-overlay/`（build-log / artifacts-list / injection-verify + README） |
+| GE-3 | `esp32-idf` | ESP-IDF **v6.1**（tag 浅克隆）+ `./install.sh esp32c3` + hello_world `idf.py build`：`Project build complete`，`hello_world.bin` 126,688B（88% free），sha256 存档，esptool v5.4.0 | `B0 Build Verification Only` | `skills/esp32-idf/examples/ge-idf-hello-build/`（evidence.txt + build-full-log.txt + README） |
+
+**踩坑实录（已回写技能演进素材）**：Docker Desktop macOS 的 host bind mount 大小写不敏感 → OpenWrt 构建必须用**命名卷**；apt 安装与执行必须在同一 `docker run`；验证 rootfs 内容优先 `rootfs.tar.gz` 直读而非 debugfs 读未解压 `.img.gz`。
+
+**仍然 Pending（不粉饰）**：真实硬件上的 flash + 上电运行（`HIL Verified` 徽章路径，ESP32 烧录与 Amlogic 盒子串口均待硬件）；其余 17 个技能的 examples 待按此三例的模板补齐。场景断言中出现的"Build Verification Only / Pending HIL"标注规范（CONVENTIONS §5）现已有本仓产物实例佐证。
 
 ## 第三层：forward-test（已执行第一轮，2026-09-02）
 
@@ -137,8 +143,8 @@ python3 scripts/validate_skills.py                     # 结构门禁
 
 | # | 待办 | 阻塞层级 | 说明 |
 |---:|---|---|---|
-| 1 | **golden examples 可执行化** | 发布阻断（第二层） | 20 个 `examples/` 目录均为空占位。ESP-IDF 侧需锁定版本的 `idf.py` 构建样例，OpenWrt 侧需 QEMU（armsr/armv8 combined-efi）启动冒烟样例；两者均待可用的构建/虚拟化环境。补齐前第二层证据为空。 |
-| 2 | **真机 HIL 证据** | 硬件依赖（第二层） | 场景与技能文中承诺的 `HIL Verified` 徽章路径需要真实硬件（ESP32 系列 + 功率计/示波器；Amlogic 盒子 + 串口线）；待硬件到位后按 `fw-hil-testing` 验收矩阵取证。 |
+| 1 | **golden examples 补齐其余 17 技能** | 第二层收尾 | ~~全部空占位~~ → 3 个黄金示例已执行（GE-1 QEMU 冒烟 / GE-2 IB+FILES= 注入 / GE-3 IDF v6.1 构建，见第二层）；其余 17 技能按三例模板补齐待排期。PHASE-2-EVALUATION G5 的"≥1 可执行 golden example"已解除空仓状态。 |
+| 2 | **真机 HIL 证据** | 硬件依赖（第二层） | GE-1/2/3 覆盖了"构建→启动冒烟→注入验证"三个前级徽章（B0/B1）；真机 flash + 上电运行的 `HIL Verified`（B2）待硬件（ESP32 系列 + Amlogic 盒子 + 串口线），按 `fw-hil-testing` 验收矩阵取证。 |
 | 3 | **forward-test 第二轮** | 第三层 | 第一轮已于 2026-09-02 执行（54/10/1，11 处发现全部修复，见第三层执行记录）；受影响 case 复跑 + 版本升级全量重跑待排期。 |
 | 4 | **场景口径统一** | 低 | 把 assertions 内的 handoff 语义同步进 `expected_skills`（涉及 `esp32-freertos-01`、`openwrt-serial-recovery-03` 等），避免 forward-test 评分口径分歧。 |
 | 5 | **TinyNAS 引用泛化** | 低（见收尾审计报告） | `skills/` 内 25 处 TinyNAS 提及中，多数为带免责声明的模式引用（可留）；少数含内部仓库路径/本机绝对路径/实名脚本案例，建议后续泛化，清单见 Phase 3 收尾汇报。 |
