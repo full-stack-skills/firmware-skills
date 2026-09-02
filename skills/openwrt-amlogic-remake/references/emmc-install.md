@@ -43,3 +43,7 @@
 - eMMC 已有系统导致 U 盘起不来 → 改名 eMMC `/boot/boot.scr` 为 `boot.scr.bak` 强制 U 盘启动（README.cn.md L672）。
 - 想改安装器行为 → 上游 ophub/luci-app-amlogic 提 PR；remake 只是搬运工。
 - 回答"哪段代码装 eMMC"时不要指到 remake——安装逻辑在 luci-app-amlogic 仓库。
+
+## 破坏性操作契约
+
+写 eMMC 属不可逆破坏性操作：执行前必须复述目标设备/分区并获得显式确认；批量刷写前先留存可回退固件（如 openwrt-ddbr 备份）。契约总纲见 fw-core。

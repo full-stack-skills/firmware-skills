@@ -125,3 +125,5 @@ Host-side double-run is `Build Verification Only`; the authoritative gate is fir
 ## Privacy
 
 This skill does not collect, store, or transmit user data. uci-defaults and preseeded configs are part of the distributed image — never embed credentials, license material, or personal endpoints in them; inject secrets at activation time instead.
+
+> **供应链红线**：uci-defaults 脚本在首启以 **root**（S10）执行——任何“脚本里 curl 远程内容再执行/写入配置”的模式 = 以 root 运行不受审计的远程代码（供应链+隐私双重风险），且破坏镜像确定性。配置必须构建期内置。

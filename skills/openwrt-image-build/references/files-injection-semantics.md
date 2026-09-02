@@ -61,3 +61,7 @@ IB 的包安装走 `opkg --offline-root $(TARGET_DIR) --force-postinstall --add-
 | 构建失败 postinst failed | §2：覆盖层破坏了包脚本依赖的文件 |
 | uci-defaults 反复执行 | §7：缺 `exit 0` 或非幂等 |
 | 镜像里出现意外符号链接残留 | §1：file_copy 只清覆盖路径上的链接，其他位置的链接不动 |
+
+## postinst 失败的收敛操作法
+
+最小二分定位：① `PACKAGES=` 只留 `libc kernel base-files` 复跑（基线必过）→ ② 按包列表二分追加，首个失败点即问题包 → ③ 对嫌疑包做“无 FILES= 复跑”区分包自身 vs 覆盖层冲突。**禁止**为出镜像删除失败日志、跳过门禁或强推半验证产物——失败是发布门禁在工作。

@@ -1,0 +1,251 @@
+{
+  "batch": "FT2",
+  "results": [
+    {
+      "id": "openwrt-amlogic-remake-01",
+      "routed_to": "openwrt-amlogic-remake",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "refusal: 拒绝编造 DTB 文件内容或文件名，明确说明这是反幻觉红线",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L85（Pitfalls）：'不要编造 DTB 文件名或本地生成 DTB —— FDTFILE 必须能在 ophub dtb 包里核对到（运行时核验），这是反幻觉红线'，原话即含'反幻觉红线'；L40 内核契约'DTB 文件名、分区偏移不确定即停'；L8 开篇'不确定即停，不编造'"
+        },
+        {
+          "assertion": "指出 s905d 板型（如 Phicomm-N1）的 FDTFILE 已由板型库定义为 meson-gxl-s905d-phicomm-n1.dtb（model_database.conf L52）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'N1 行原文（conf L52，ID 101）'L25-31 给出原文行，FDTFILE=meson-gxl-s905d-phicomm-n1.dtb；L36 字段解读再次确认；SKILL.md L37 板型契约同引 conf L52"
+        },
+        {
+          "assertion": "说明 DTB 必须来自 ophub/kernel 对应版本的 dtb-amlogic-<ver>.tar.gz 包，remake 不生成 DTB",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L36：FDTFILE'由 ophub kernel 的 dtb-amlogic-<ver>.tar.gz 提供'；同文件 L12（15 列表第 4 列）：'必须由 ophub 内核 dtb 包提供，remake 不生成'；SKILL.md L40 内核契约三包（boot/dtb/modules）与'FDTFILE 必须能在 dtb 包内核对到'；kernel-lines.md L47'/boot/dtb/amlogic/ 解包 dtb 包，板型 FDTFILE 必须在此目录中能找到'"
+        },
+        {
+          "assertion": "引导到上游板型库（ophub/amlogic-s9xxx-openwrt 提 PR）或运行时核验（下载 dtb 包核对文件名），而不是自行编写",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'新增板型流程（模式）'L57-60：'上游 ophub/amlogic-s9xxx-openwrt 提 PR 修改 model_database.conf；FDTFILE 必须与 ophub/kernel 对应版本 dtb 包内实际文件一致（下载 dtb-amlogic-<ver>.tar.gz 核对文件名，运行时核验）'，L59'不允许只改本地 openwrt-files 后宣称支持新板'；§查板流程 L54'查无此板 → 停，不要猜 BOARD，不要编 DTB 文件名'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-amlogic-remake-02",
+      "routed_to": "openwrt-amlogic-remake",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "board id 使用 s905d（板型库第 14 列 BOARD），明确指出 -b n1 是错的",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L37（Contracts·板型契约）：'board id 只能取自 model_database.conf 第 14 列 BOARD。N1 的 board id 是 s905d，不是 n1（conf L52）'；L84 Pitfalls：'不要用 n1 当 -b 值'；board-database.md L35'-b 的值是第 14 列 s905d，不是 n1 也不是 Phicomm-N1'，§15 列结构 L22 第 14 列 BOARD 定义"
+        },
+        {
+          "assertion": "给出 remake 命令形态，如 sudo ./remake -b s905d -k 6.12.y（可带 -u/-s/-n 说明）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 3 步 L57-65 给出完整命令块：'sudo ./remake -b s905d -k 6.12.y'，并逐行注释 -u（换内核 tag 线）/-s 512/2560（boot/root 容量，L293-294）/-p（LAN IP，L247-254）/-n（构建者签名）"
+        },
+        {
+          "assertion": "说明输入文件必须是 openwrt-armsr/*rootfs.tar.gz（find_openwrt 只认该目录）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L25（Preflight）：'输入文件就位：openwrt-armsr/*rootfs.tar.gz —— find_openwrt 只认该目录与该通配（remake L56-57、L436-446），放别处等于没放'；L36 输入契约重申并给出内含 etc/openwrt_release 的约束"
+        },
+        {
+          "assertion": "提示需要 Linux root 环境，macOS/Windows 不可直跑，可路由 fw-emulation 或上游 GitHub Actions",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L21（root：脚本自检 id -u==0，remake L1356）；L24：'macOS/Windows 不可直跑：依赖 losetup/btrfs/mount，无宿主对应物。路由：容器仿真 fw-emulation，或上游 GitHub Actions（action.yml 以 sudo ./remake 运行 L114…）'；L86 Pitfalls 与 L50 Hand-off 表（'无 Linux 环境想仿真跑 remake → fw-emulation'）"
+        },
+        {
+          "assertion": "产物为 openwrt_amlogic_s905d_k*.img.gz，eMMC 安装由镜像内晶晨宝盒（luci-app-amlogic）完成而非 remake",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L69（Workflow 第 5 步）：'openwrt/out/openwrt_[official_]amlogic_s905d_k6.12.y_YYYY.MM.DD.img.gz（命名规则 L794）'，与断言 glob 形态一致；L41（安装契约）：'eMMC 安装能力来自打包期注入的 luci-app-amlogic（晶晨宝盒）（L85、L551-566），remake 流程本身不执行 eMMC 安装'；references/emmc-install.md §'核心事实：remake 不自研安装器'及 L45'回答哪段代码装 eMMC 时不要指到 remake'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-amlogic-remake-03",
+      "routed_to": "openwrt-amlogic-remake",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "指出板型库中没有 s905-H（小米盒子3 SoC）专属行（grep s905h 无结果，走读 2026-09-02）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'查无此板的实例：小米盒子3（S905-H）'L64：'conf 中没有 s905h 专属行（grep -i s905h 无结果，走读 2026-09-02）'，与断言逐字对应"
+        },
+        {
+          "assertion": "说明可参考通用板型 id s905（model_database.conf L207，meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L65：'存在通用 SOC=s905 行：conf L207 BOARD=s905（meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb，BUILD=yes）——需要用 s905 世代盒子时以此为入口'"
+        },
+        {
+          "assertion": "说明 S905-H 世代设备 eMMC 写入普遍受限、U 盘启动是可靠路径；上游文档仅保证 USB 启动优先于 eMMC（documents/README.cn.md L671）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L66：'S905-H 世代盒子社区普遍反馈 eMMC 写入受限、仅 U 盘启动可用；上游文档只保证 USB 启动优先于 eMMC（documents/README.cn.md L671）'；references/emmc-install.md L28 用户侧安装流第 2 步同引 README.cn.md L671"
+        },
+        {
+          "assertion": "不替用户断言具体设备可写 eMMC，建议运行时核验（TTL 观察/写入测试），未验证结论标注 Pending HIL",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L66：'具体某台设备能否写 eMMC，以运行时核验（TTL 观察/短接/写入测试）为准，不要替用户断言'；Pending HIL 纪律在 SKILL.md L79（Validation Gates）：'缺真机证据标注 Pending HIL'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-amlogic-remake-04",
+      "routed_to": "openwrt-amlogic-remake",
+      "expected_skills": [
+        "openwrt-amlogic-remake"
+      ],
+      "routing_match": true,
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "确认是 -b 参数值错误：remake 匹配的是板型库第 14 列 BOARD，N1 的正确值是 s905d 不是 n1",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md L37（板型契约）'board id 只能取自 model_database.conf 第 14 列 BOARD。N1 的 board id 是 s905d，不是 n1（conf L52）'；L84 Pitfalls 原话'不要用 n1 当 -b 值'；board-database.md L35 与 §-b 语法全集 L48（remake L687-691 按第 14 列匹配）"
+        },
+        {
+          "assertion": "给出修正命令 sudo ./remake -b s905d",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 3 步 L59-60 给出 'sudo ./remake -b s905d -k 6.12.y'（含 -b s905d 的完整命令形态）；结合 L84 Pitfalls 与 board-database.md L35 可直接给出最小修正 'sudo ./remake -b s905d'"
+        },
+        {
+          "assertion": "说明查板方法：在 model_database.conf 里 grep 型号/别名，取第 14 列作为 -b 值（可多板用 _ 连接）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 1 步 L55：'定板型：在板型库 grep 型号/别名 → 取 BOARD、FDTFILE…'；board-database.md §查板流程 L50-54 三步法；L35'-b 多板用 _ 连接（remake L360-362 去重）'与 §-b 语法全集 L48'-b s905d_s905x | 指定 BOARD，_ 分隔'"
+        },
+        {
+          "assertion": "说明报错来源 confirm_version 在板型库中找不到匹配 BOARD 的行（remake L687-692）",
+          "verdict": "WARN",
+          "evidence": "部分支持：references/board-database.md L48 引了同一行号段 remake L687-691（断言为 L687-692），但语义标注为 '-b 多板匹配取每板第一匹配行'，未说明其为 not-found 报错来源；references/emmc-install.md L13 是全技能唯一出现 confirm_version 处，且角色不同（生成 model_database.txt，L303-308）。技能全文（SKILL.md + 3 个 references，grep 核验）均未出现报错串 'configuration not found'，也未记载 confirm_version 查无 BOARD 即报错退出的行为。按此技能作答可完成参数修正，但无法按断言口径解释报错来源"
+        }
+      ],
+      "issues": [
+        "断言4 WARN：技能未记录报错串 'The [ x ] configuration not found!'，也未将 confirm_version(L687-692) 标为报错来源；最接近的证据是 board-database.md L48（remake L687-691，标注为 -b 多板匹配逻辑）与 emmc-install.md L13（confirm_version 承担另一职责）。建议在 board-database.md 查板流程补一句'查无匹配 → confirm_version 报 The [ x ] configuration not found! 并退出（remake L687-692）'即可闭环"
+      ]
+    },
+    {
+      "id": "openwrt-storage-mount-01",
+      "routed_to": "openwrt-storage-mount",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出包矩阵：block-mount + kmod-usb-storage + 按盘格式选 kmod-fs-ext4/vfat/ntfs3 等，并强调 kmod 版本必须等于 uname -r",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 1 步 L56-62：'opkg install block-mount kmod-usb-storage kmod-fs-ext4'，注释'NTFS 盘加 kmod-fs-ntfs3；exFAT 加 kmod-fs-exfat；btrfs 加 kmod-fs-btrfs'；references/kmod-storage.md §选包矩阵 L45-54 按盘格式全表；版本匹配：SKILL.md L24 Preflight'kmod 包版本必须与之精确匹配，跨版本模块拒绝加载'、L115 Pitfalls、kmod-storage.md L8/L14"
+        },
+        {
+          "assertion": "给出 fstab 生成与启用步骤：block detect > /etc/config/fstab，uci 置 target 与 enabled=1",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 2-3 步 L64-71：'block detect > /etc/config/fstab' + 'uci set fstab.@mount[-1].target=/mnt/sda1; uci set …enabled=1; uci commit fstab'；references/fstab-uci.md §手工配置一条自动挂载 L49-55 同款命令，并注明 detect 生成的 enabled 恒为 0（L32-33）"
+        },
+        {
+          "assertion": "给出验证链：block mount && df -h，重启后再验一次（S11 fstab init 的 block mount）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 4 步 L74：'立即挂载并验证：block mount && df -h'；第 5 步 L75：'重启验证开机链路：重启后 df -h 仍在（S11 block mount 生效）'；L41 开机契约'/etc/init.d/fstab START=11：boot() → /sbin/block mount'；Validation Gates L105 第 4 条'重启保持'"
+        },
+        {
+          "assertion": "说明默认 router 型镜像不带 block-mount（DEFAULT_PACKAGES.nas 才含），首启 uci-defaults 10-fstab 只在 fstab 不存在时生成草稿",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md L22 Preflight：'nas 设备型默认含 block-mount（target.mk L44-48），router 型默认不含（L52-61）'（即 DEFAULT_PACKAGES.nas 机制，以 target.mk 行号为据）；首启契约 L40：'/etc/uci-defaults/10-fstab 仅当 /etc/config/fstab 不存在时执行 block detect > /etc/config/fstab'；fstab-uci.md L9 原文口径 '[ ! -f /etc/config/fstab ] && ( block detect > … )'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-storage-mount-02",
+      "routed_to": "openwrt-storage-mount",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "handoff/correction: 纠正\"hotplug 里直接 mount\"的做法，说明 block-mount 的 10-mount 已拥有挂载权（add/remove → /sbin/block hotplug），自写挂载会与之竞争（双挂载/umount 互踩）",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md L8 开篇：'block-mount 已拥有挂载权；自定义 hotplug 脚本只做补充动作，绝不二次挂载'；L39 挂载所有权：'10-mount 收到 add/remove 即执行 /sbin/block hotplug'；§Workflow B L79：'你的脚本若也 mount，会与 block hotplug 竞争（双挂载、互踩 umount）'；L110 Pitfalls；references/hotplug-flow.md §'为什么附加脚本必须 >10 且不挂载' L34-38"
+        },
+        {
+          "assertion": "给出正确模式：脚本序号 >10（如 50-），只做补充动作（打点/扫描/通知），绝不 mount",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow B L81：'序号 >10（10-mount 之后执行）：/etc/hotplug.d/block/50-<name>'；L82：'只做 block-mount 不做的事：健康扫描、点灯、通知、logger 打点'；L111 Pitfalls'不要用 ≤10 的序号'；hotplug-flow.md L36 字序保证 50- 在 10-mount 之后"
+        },
+        {
+          "assertion": "挂载需求引导回 fstab UCI（block detect + enabled=1）作为挂载的唯一事实源",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md L110 Pitfalls：'挂载的唯一事实源是 fstab UCI'；hotplug-flow.md L37 同句；挂载配置本身由 §Workflow A L64-71（block detect + uci enabled=1）承接"
+        },
+        {
+          "assertion": "引用或复现 50-tinynas-disk 的真实模式：先过滤 ACTION=add 与 DEVNAME，动作后台化，工具存在才调用",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow B 脚本模板 L85-93 逐条对应：'[ \"$ACTION\" = \"add\" ] || exit 0'、'case \"$DEVNAME\" in sd[a-z])'、'( [ -x /usr/bin/my-disk-hook ] && … & )'（后台化+工具存在才调用）；L95 明示来源：'该模式来自实测仓库真实例子 50-tinynas-disk（openwrt-imagebuilder/common/tinynas-files/etc/hotplug.d/block/）…仅对 rotational=1 的 sdX 后台排队快速扫描，且工具存在才调用'；hotplug-flow.md L38 同引"
+        },
+        {
+          "assertion": "构建期固化该脚本进镜像的建议 hand-off 到 openwrt-image-build",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Capability Boundaries + Hand-off L51：'构建期预置 block-mount/kmod/自定义 fstab/50- 脚本进镜像 → openwrt-image-build'；§Workflow A 第 1 步 L56 注'构建期预置 hand-off openwrt-image-build'；references/kmod-storage.md §构建期预置（hand-off）L58-60"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-storage-mount-03",
+      "routed_to": "openwrt-storage-mount",
+      "expected_skills": [
+        "openwrt-storage-mount"
+      ],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "定位为缺文件系统 kmod：unknown filesystem 说明存储链路已通（usb-storage 已加载），缺的是对应 fs 模块",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Validation Gates 第 5 条 L106：'失败特征：dmesg 出现 unknown filesystem / block mount 静默不挂 → 通常是缺 fs kmod，回 Workflow A 第 1 步核对包矩阵'；分层定位由 references/kmod-storage.md L25 支持：'lsusb 能看到设备而 /sys/class/block 无盘，基本可锁定 usb-storage/控制器层'——反之本例已见盘、报 unknown filesystem，即落在 fs 模块层；hotplug-flow.md §逐段排查表 L44-45 两层症状区分"
+        },
+        {
+          "assertion": "按盘格式给包：FAT32→kmod-fs-vfat、exFAT→kmod-fs-exfat、NTFS→kmod-fs-ntfs3、ext4→kmod-fs-ext4",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/references/kmod-storage.md §选包矩阵（按盘的文件系统）L47-53 四行逐一对应（ext4/btrfs/FAT32/exFAT/NTFS）；SKILL.md Workflow A L61 注释同口径"
+        },
+        {
+          "assertion": "提醒 kmod 版本必须与 uname -r 精确匹配，跨版本 insmod 拒绝加载",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md L24 Preflight：'uname -r —— kmod 包版本必须与之精确匹配，跨版本模块拒绝加载'；L115 Pitfalls；references/kmod-storage.md L8/L14：'跨版本 insmod 被内核拒绝（vermagic 不符）'"
+        },
+        {
+          "assertion": "给出一句话能力边界：NTFS/exFAT 能挂能写，但坏块隔离/自愈是 ext4 原生能力，长期数据盘优先 ext4",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/SKILL.md §Contracts 第 6 条 L43：'kmod-fs-ntfs3 / kmod-fs-exfat 让 NTFS/exFAT 能挂能写；但坏块隔离与自愈等数据保护是 ext4（及 btrfs）这类原生文件系统的能力，长期数据盘优先 ext4'；L116 Pitfalls；kmod-storage.md L56 能力边界一句话"
+        },
+        {
+          "assertion": "排查顺序遵循 kmod（盘可见）→ fstab（enabled）→ block mount → 重启验证",
+          "verdict": "PASS",
+          "evidence": "skills/openwrt-storage-mount/references/fstab-uci.md §常见坑末条 L64：'排查顺序永远是：kmod（盘可见）→ fstab（条目 enabled）→ block mount（手动触发）→ 重启（S11 链路）'，与断言逐段一致"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 6,
+    "warn": 1,
+    "fail": 0
+  }
+}

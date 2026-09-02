@@ -44,3 +44,5 @@ echo "PASS"
 | L2 真机 HIL | `fw-hil-testing` | 硬件可用/外设行为/性能 | 真机证据 |
 
 任何跨层宣称（拿 L0/L1 结论说 L2 的事）都是越级，拒绝。
+
+> 真实例溯源：`tiny-nas/tinynas-openwrt-imagebuilder`（GitHub 公开仓）`common/tinynas-files/tests/` —— `run-lint.sh`（静态门禁总入口）与 `test-machine-id.sh`（fixture 注入 + 独立期望值行为测试）。

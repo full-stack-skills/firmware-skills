@@ -1,0 +1,328 @@
+{
+  "batch": "FT3",
+  "results": [
+    {
+      "id": "openwrt-procd-init-01",
+      "routed_to": "openwrt-procd-init",
+      "expected_skills": ["openwrt-procd-init"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出的脚本以 #!/bin/sh /etc/rc.common 开头并声明 USE_PROCD=1 与 START/STOP",
+          "verdict": "pass",
+          "evidence": "skills/openwrt-procd-init/SKILL.md Workflow A 模板 L73-L77：`#!/bin/sh /etc/rc.common` + `USE_PROCD=1` + `START=99` + `STOP=10`，与断言完全一致"
+        },
+        {
+          "assertion": "在 start_service() 里用 procd_open_instance/procd_close_instance 包裹实例",
+          "verdict": "pass",
+          "evidence": "SKILL.md L79-L87：start_service() 内 procd_open_instance → procd_set_param/append_param → procd_close_instance；references/procd-instance.md L7-L12 给出 instance skeleton 及名称默认规则（L143-L150）"
+        },
+        {
+          "assertion": "命令参数逐个传递：procd_set_param command /usr/bin/myagent 后用 procd_append_param command --config /etc/myagent.toml，而不是把整条命令行塞进一个带引号的参数",
+          "verdict": "pass",
+          "evidence": "SKILL.md L81-L82 精确给出该模式并注释 \"one arg per call\"；Pitfalls L133 \"Do not pass a whole command line as one quoted string...arrays take one function argument per argv element (procd.sh L28)\"；references/procd-instance.md L18 \"One shell argument per argv element — no space splitting\""
+        },
+        {
+          "assertion": "说明 /etc/init.d/myagent enable 需要脚本里有 START，否则 enable 失败",
+          "verdict": "pass",
+          "evidence": "SKILL.md L97 注释 \"needs START, else fails silently with rc=1\"；Contracts L42 \"enable() ... returns error 1 when neither START nor STOP is set (rc.common L44-L54)\"；Pitfalls L135；references/rc-common-api.md L28-L40 给出 enable() 源码级语义"
+        },
+        {
+          "assertion": "给出设备端验证命令（status、logread | grep procd），并在无设备时标注 Build Verification Only",
+          "verdict": "pass",
+          "evidence": "SKILL.md L100-L101：`/etc/init.d/myagent status`、`logread | grep -i procd | tail`；L32 \"If you cannot reach a device, produce scripts + validation commands and mark the result Build Verification Only. Do not claim boot-tested behavior.\""
+        },
+        {
+          "assertion": "不引导用户手写 /etc/rc.d/ 符号链接",
+          "verdict": "pass",
+          "evidence": "SKILL.md Pitfalls L136 \"Do not hand-write /etc/rc.d/S.. links into an image overlay or commit them to the build tree\"；Validation Gates L129 \"the image overlay must NOT contain /etc/rc.d/ entries\"；全文验证命令只做 `ls -l /etc/rc.d/` 只读检查（L28、L98）"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-procd-init-02",
+      "routed_to": "openwrt-procd-init",
+      "expected_skills": ["openwrt-procd-init", "openwrt-image-build"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "明确拒绝手放 /etc/rc.d/ 链接进覆盖层的做法",
+          "verdict": "pass",
+          "evidence": "skills/openwrt-procd-init/SKILL.md Pitfalls L136 \"Do not hand-write /etc/rc.d/S.. links into an image overlay\"；hand-off 后 skills/openwrt-image-build/SKILL.md Pitfall 2 L157 \"不要在覆盖层手放 /etc/rc.d/Sxx* 链接……手放是冗余且会被 lint 门禁拒绝（build-template.sh:155-157 明确禁止）\""
+        },
+        {
+          "assertion": "解释 Image Builder 在构建期 prepare_rootfs 会自动 enable 带 rc.common shebang 的 init 脚本，因此应把脚本放 files/etc/init.d/ 并写好 shebang 与 START",
+          "verdict": "pass",
+          "evidence": "procd-init SKILL.md L129 \"The Image Builder auto-enables init scripts that carry the rc.common shebang during rootfs preparation\"；references/start-order.md L39 同结论；openwrt-image-build SKILL.md L116 点名机制 \"prepare_rootfs 对带 #!/bin/sh /etc/rc.common shebang 的 /etc/init.d/* 自动执行 enable 生成启用链接（rootfs.mk:104-113）\"，L104 覆盖层树示例 files/etc/init.d/tinynas-boot，Pitfall 5 L160 门禁要求 init.d 缺 rc.common shebang 或 START= 会被拦下"
+        },
+        {
+          "assertion": "提示需要禁用自启时用 DISABLED_SERVICES 而不是删链接",
+          "verdict": "pass",
+          "evidence": "procd-init SKILL.md L129 \"disabling is done via DISABLED_SERVICES, not by hand-creating links\"、Pitfalls L136；openwrt-image-build SKILL.md L116 \"列进 DISABLED_SERVICES 的才被 disable\"、L128 make image 参数表含 DISABLED_SERVICES"
+        },
+        {
+          "assertion": "把 Image Builder 细节 hand-off 给 openwrt-image-build 技能",
+          "verdict": "pass",
+          "evidence": "procd-init SKILL.md Determine Task Type L18 \"Package the script into an image / control auto-enable | Hand-off → openwrt-image-build\"；L61 路由表 \"Overlay layout, DISABLED_SERVICES, IB auto-enable internals → openwrt-image-build\"；L129 \"Deep dive → openwrt-image-build\""
+        }
+      ],
+      "issues": [
+        "备注（非缺陷）：仅凭 frontmatter 路由时，'IB 覆盖层里的启动脚本' 也可能先命中 openwrt-image-build（其 description 覆盖 FILES=/DISABLED_SERVICES）。但 expected_skills 同时含两者，且 procd-init 清单明确声明 init 脚本主题入口并显式移交，双路径均落在期望集合内，不构成路由失败。"
+      ]
+    },
+    {
+      "id": "openwrt-procd-init-03",
+      "routed_to": "openwrt-procd-init",
+      "expected_skills": ["openwrt-procd-init"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "按顺序排查：先查第一行是否为 #!/bin/sh /etc/rc.common，再查是否定义了 START",
+          "verdict": "pass",
+          "evidence": "skills/openwrt-procd-init/SKILL.md Workflow C L114 \"head -n1 ... must be #!/bin/sh /etc/rc.common\"（步骤 1），L115 \"Is START (or STOP) assigned?\"（步骤 2），顺序与断言一致"
+        },
+        {
+          "assertion": "指出 enable() 在无 START/STOP 时返回失败、不生成 /etc/rc.d 链接（rc.common L44-54 语义）",
+          "verdict": "pass",
+          "evidence": "SKILL.md L115 \"Without them enable() returns 1 and creates no link (rc.common L44-L54)\"；Contracts L42 同引 L44-L54；references/rc-common-api.md L28-L40 给出 enable() 函数体（err=1 起步、仅有 START/STOP 时 ln -sf 并置 err=0）——断言引用的行号与技能引用完全对齐"
+        },
+        {
+          "assertion": "用 ls -l /etc/rc.d/ 与 /etc/init.d/<name> enabled 验证链接是否存在",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow C L116 \"ls -l /etc/rc.d/ | grep <name> and /etc/init.d/<name> enabled; echo $? — the link must exist before boot will run it\"；references/rc-common-api.md L42 enabled() 语义（L56-L64）"
+        },
+        {
+          "assertion": "区分'没 enable/顺序不对'与'启动后崩溃'两条路径，后者查 logread 与 respawn 行为",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow C L117 \"Starts manually but not at boot → it is an enable/order problem, not a script problem. Re-check START against dependencies\"；L118 \"Starts then dies → logread | grep procd; inspect respawn behavior...trace\"；两条路径明确分流"
+        },
+        {
+          "assertion": "不引导用户手写 /etc/rc.d/ 链接来修问题",
+          "verdict": "pass",
+          "evidence": "Workflow C（L112-L118）五步排查均不涉及手写链接；Pitfalls L136 明令禁止；验证只读检查链接（L116）"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-serial-recovery-01",
+      "routed_to": "openwrt-serial-recovery",
+      "expected_skills": ["openwrt-serial-recovery"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "先分级再动手：给出软砖/启动介质砖/硬砖分级与先软后硬的三级梯度（U盘刷回 → TTL U-Boot → 短接/线刷）",
+          "verdict": "pass",
+          "evidence": "skills/openwrt-serial-recovery/references/recovery-ladder.md L5-L13 \"Brick grading\" 表：Soft brick / Boot-media brick / Hard brick + \"Principle: 先软后硬 — never advance a tier while the previous tier has untried paths\"；SKILL.md L54-L60 Recovery Ladder 三级表：USB/SD re-flash → TTL U-Boot → Short-circuit/programmer"
+        },
+        {
+          "assertion": "Tier 1 先行：U 盘启动优先于 eMMC，N1 用靠近 HDMI 的 USB 口（标注社区经验），必要时把 eMMC 的 /boot/boot.scr 改名再试",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow T1 L74 \"Boot from USB before touching eMMC — USB has boot priority over eMMC (README.cn §10.10.2). Community note for N1: the USB port nearer the HDMI connector...（社区经验）\"；L75 \"rename eMMC /boot/boot.scr to boot.scr.bak and retry (README.cn §10.10.2)\"；recovery-ladder.md L19-L21 同表"
+        },
+        {
+          "assertion": "能进系统时给出救援路径：晶晨宝盒救援内核 / openwrt-kernel -s（注明文档拼写 openwer-kernel 需在设备上 which 核实）与 openwrt-ddbr 恢复",
+          "verdict": "pass",
+          "evidence": "SKILL.md T1 L76 \"rescue via LuCI Amlogic Service (晶晨宝盒) → 救援内核，or openwrt-kernel -s [disk]...the ophub document spells the tool openwer-kernel; confirm the exact binary on-device with which openwrt-kernel openwer-kernel\"；L77 openwrt-ddbr b/r 备份恢复（README.cn §10.8.1）；recovery-ladder.md L22-L23 同"
+        },
+        {
+          "assertion": "TTL 参数 115200 8N1 3.3V 标注为常见值、以板实测为准（Pending HIL），不当作该板的事实",
+          "verdict": "pass",
+          "evidence": "SKILL.md Contracts L40 \"115200 8N1, 3.3 V TTL is the common Amlogic default — 常见值，以板实测为准 (Pending HIL)\"；T2 L82 同标注；references/uart-basics.md L14-L19 参数表逐项标 \"常见值 — Pending HIL / 需按板实测\"，并补充 1.5 Mbaud 备选也仅标常见值"
+        },
+        {
+          "assertion": "短接点等板级参数不编造：路由到官方原理图/ophub tools 设备资料/fw-hil-testing",
+          "verdict": "pass",
+          "evidence": "SKILL.md Contracts L41 反幻觉红线 \"does not state shorting-point locations, board pinouts...All such values are Pending HIL / 需按设备实测\"；L62 与 Workflow T3 L90 三路路由：official schematic、ophub tools matrix、fw-hil-testing；hand-off 表 L47"
+        },
+        {
+          "assertion": "反问确认 SoC 型号与剩余可用介质，不默认所有盒子都能写 eMMC",
+          "verdict": "pass",
+          "evidence": "SKILL.md Prerequisites L21-L25 \"Ask for / gather before recommending anything: 1. Exact board model and SoC...3. What media is available\"；Contracts L37-L38 区分 N1（eMMC 可写）与小米盒子3/S905-H（社区记录标准流程不可写）；Pitfalls L106 \"Do not promise 'eMMC 写入' for SoCs where the standard flow does not support it\""
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-serial-recovery-02",
+      "routed_to": "openwrt-serial-recovery",
+      "expected_skills": ["openwrt-serial-recovery"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "拒绝提供编造或凭记忆的短接点位置，明确本技能不含任何具体板子的短接点图（Pending HIL / 需按设备实测）",
+          "verdict": "pass",
+          "evidence": "SKILL.md Contracts L41 反幻觉红线；Recovery Ladder 表 L60 \"this skill does not provide board-specific shorting points\"；Workflow T3 L90 \"This skill refuses to state any board's shorting points from memory\"；references/recovery-ladder.md L40 \"Specific shorting points: not provided by this skill...every specific-board answer here is Pending HIL / 需按设备实测\""
+        },
+        {
+          "assertion": "给出可核实的权威获取路径：设备官方原理图/设备 wiki、ophub kernel tools release 中的设备固件与短接示意图",
+          "verdict": "pass",
+          "evidence": "SKILL.md T3 L90 \"route to the official schematic, the ophub tools matrix\"；recovery-ladder.md L40 \"Board-specific diagrams exist in the ophub tools release and device wikis\"；Official Sources L112 \"ophub tools (Android firmware, burning tool, adb): github.com/ophub/kernel/releases/tag/tools\""
+        },
+        {
+          "assertion": "提示短接属 Tier 3 硬件操作：确认 Tier 1（U盘）与 Tier 2（TTL）确实无路再动手，并路由 fw-hil-testing 做有人监督的硬件验证",
+          "verdict": "pass",
+          "evidence": "SKILL.md Prerequisites L27 \"Do not proceed to Tier 2/3 advice while a Tier 1 path is untried\"；Pitfalls L101；recovery-ladder.md L13 先软后硬原则 + L45-L47 Decision quick path（USB→TTL→Tier 3 routing）；L47 hand-off \"Supervised hardware verification of any Pending HIL item → fw-hil-testing\"；L41 \"Programmer-class recovery...→ fw-hil-testing\""
+        },
+        {
+          "assertion": "警告短接操作前提：USB Burning Tool 线刷流程与擦除 flash/bootloader 的后果需要知情确认",
+          "verdict": "pass",
+          "evidence": "recovery-ladder.md L39 明确列出后果与流程：\"Amlogic USB Burning Tool + USB A-A cable + paperclip shorting; erase flash + bootloader; remove short when the progress bar moves; restores stock Android, then re-flash OpenWrt as on first install\"（项目文档 §10.8.2）；SKILL.md Validation Gates L96 \"success claims require the supervised HIL record — never assert recovery you did not observe\"，以监督式 HIL 路由落实知情门槛"
+        }
+      ],
+      "issues": [
+        "备注：断言中'需要知情确认'的表述在技能中以'声明 out of scope + 路由 fw-hil-testing 有人监督验证 + 明示 erase flash + bootloader 后果'实现，而非显式确认清单；安全语义等价，证据充分（recovery-ladder.md L39、SKILL.md L96），故判 pass。"
+      ]
+    },
+    {
+      "id": "openwrt-serial-recovery-03",
+      "routed_to": "openwrt-serial-recovery",
+      "expected_skills": ["openwrt-serial-recovery"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "判定这是运行期排障而非救砖，先做 logread / dmesg 尾部检查定位失败层",
+          "verdict": "pass",
+          "evidence": "SKILL.md Determine Task Type L14 \"Still boots (from eMMC or USB), services misbehave | Runtime triage → Workflow R\"；Workflow R L66-L67 \"logread | tail -50 — service failures...; dmesg | tail -50 — storage/IO errors...\"；uart-basics.md L42-L47 运行期诊断同构"
+        },
+        {
+          "assertion": "procd respawn 相关线索（服务反复被拉起后放弃）指向 init 脚本/服务配置而非硬件",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow R L66 \"service failures, respawn storms (procd messages)\"；L69 \"Fix at the config layer first (→ openwrt-procd-init, openwrt-uci-defaults); only a non-booting device drops to the ladder\"——respawn 线索被定性为配置层问题"
+        },
+        {
+          "assertion": "把服务脚本与配置修复路由 openwrt-procd-init / openwrt-uci-defaults，存储类症状路由 openwrt-storage-mount",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow R L69 显式路由 procd-init/uci-defaults；Capability Boundaries L49-L50 \"Fix services/config after the device boots again → openwrt-procd-init, openwrt-uci-defaults；Storage/mount problems that look like 'disk dead' → openwrt-storage-mount\"；uart-basics.md L47 同"
+        },
+        {
+          "assertion": "不渲染'变砖前兆'恐慌，不引入刷机级操作作为首选",
+          "verdict": "pass",
+          "evidence": "技能结构上把仍能开机的设备限定在 Workflow R（L14），明确 \"only a non-booting device drops to the ladder\"（L69）；Pitfalls L101 禁止在 USB 启动未尝试前给短接建议；全文无任何把服务崩溃表述为变砖前兆的内容"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-uci-defaults-01",
+      "routed_to": "openwrt-uci-defaults",
+      "expected_skills": ["openwrt-uci-defaults"],
+      "routing_match": true,
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "给出放在 files/etc/uci-defaults/ 下的数字前缀命名脚本（如 50-nas-uhttpd）",
+          "verdict": "pass",
+          "evidence": "skills/openwrt-uci-defaults/SKILL.md Workflow A L65 \"Name it <NN>-<purpose> (e.g. 50-tinynas-uhttpd); order matters only between your own scripts\"；L80 \"Place the script under files/etc/uci-defaults/ in the Image Builder overlay\"；references/uci-defaults-lifecycle.md L30 数字前缀控制 ls 序"
+        },
+        {
+          "assertion": "脚本幂等：先探测再写入（uci -q get ... || uci set ...），所有路径以 exit 0 结束",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow A L68-L77 验证过的模板：`[ -f /etc/config/uhttpd ] || exit 0` + `uci -q get ... || uci set ...` + 末行 `exit 0`；Contracts L41 \"Idempotence is mandatory...must end with exit 0 even on 'already done' paths\""
+        },
+        {
+          "assertion": "解释 init.d/boot 在 S10 首启执行脚本、成功后才删除、失败保留重跑的生命周期",
+          "verdict": "pass",
+          "evidence": "SKILL.md L8 \"run at boot S10 and are deleted only when they exit success (boot uci_apply_defaults, boot L7-L20)\"；Contracts L40 \"Only then is it appended to the delete list...Failures stay and re-run next boot (boot L14-L19)\"；references/uci-defaults-lifecycle.md L7（boot START=10）与 L10-L35 逐字源码语义"
+        },
+        {
+          "assertion": "说明时区用 system.@system[0] 的 timezone/zonename",
+          "verdict": "warn",
+          "evidence": "技能覆盖缺口：对 skills/openwrt-uci-defaults/ 全目录 grep \"timezone|zonename|Asia/Shanghai\" 零命中；SKILL.md frontmatter description（L3）列举的 uHTTPd 键（docroot/cgi_prefix/rfc1918_filter/max_requests/script_timeout）与时区无关。docroot 部分有完整支撑（references/uhttpd-config.md L11 `home` → `-h`，默认 /www），但时区事实完全不在技能内，作答只能依赖外部通用知识，违背本包\"事实须有出处或标注\"的一贯纪律。断言本身可被通用知识满足，故 warn 而非 fail"
+        },
+        {
+          "assertion": "给出首启验证：ls /etc/uci-defaults/ 应为空、uci get 确认生效，无设备时标注 Build Verification Only",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow A L81 \"ls /etc/uci-defaults/ no longer lists the script, uci get uhttpd.main.home returns the new value\"；Validation Gates L100-L103；L31 与 L106 \"No device in hand → deliver scripts + verification commands marked Build Verification Only...Pending HIL until then\""
+        },
+        {
+          "assertion": "不引导在脚本里写网络下载或覆盖 init 脚本管理的键",
+          "verdict": "pass",
+          "evidence": "SKILL.md Pitfalls L111 \"Do not depend on network in uci-defaults (no curl/wget/opkg)\"；L79 与 L114 \"Do not patch keys owned by a boot-order init script (e.g. TinyNAS index_page owned by S99 tinynas-boot)...pick one owner\"；references/uhttpd-config.md L47 index_page 单一所有者案例"
+        }
+      ],
+      "issues": [
+        "覆盖缺口（WARN 根因）：openwrt-uci-defaults 技能（SKILL.md + 全部 references）完全不涉及时区设置（system.@system[0] 的 timezone/zonename），manifest description 也未列。场景 01 的时区需求只能靠技能外知识作答。建议在 references 增补 system 配置一节或由 fw-core 路由说明。"
+      ]
+    },
+    {
+      "id": "openwrt-uci-defaults-02",
+      "routed_to": "openwrt-uci-defaults",
+      "expected_skills": ["openwrt-uci-defaults"],
+      "routing_match": true,
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "明确拒绝：首启可能无 WAN，脚本会失败并被保留反复重跑",
+          "verdict": "pass",
+          "evidence": "SKILL.md Pitfalls L111 \"First boot may have no WAN, and pulling remote content breaks image determinism\"；Contracts L40 \"Failures stay and re-run next boot (boot L14-L19)\"——拒绝立场与失败重跑机制均有直接文本支撑"
+        },
+        {
+          "assertion": "指出这破坏镜像构建的确定性与可复现性，且引入供应链/隐私风险（远程内容以 root 执行、可能携带敏感回连）",
+          "verdict": "warn",
+          "evidence": "确定性/可复现性有直接支撑：Pitfalls L111 \"pulling remote content breaks image determinism\"；references/preset-vs-defaults.md L20 \"bit-for-bit deterministic...no script execution risk\"。root 执行事实存在于 references/uci-defaults-lifecycle.md L43 \"Scripts run as root at S10\"，但语境是\"勿在 uci-defaults 里重启守护进程\"；'远程内容以 root 执行=供应链/隐私风险（敏感回连）'这一风险论证技能未显式给出（Privacy 节 L127 只谈\"勿把凭据写进 uci-defaults\"）。断言三要素中两条有据、一条需外部补全 → warn"
+        },
+        {
+          "assertion": "给出替代：把配置在构建期作为预置最终文件或 uci-defaults 随镜像分发，构建期细节路由 openwrt-image-build",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow B L83-L85 预置最终 /etc/config 文件（Route A）；L80 uci-defaults 随 overlay 分发；Pitfalls L111 \"route such needs to build-time packaging\"；L60 路由表 \"Overlay layout, FILES=...→ openwrt-image-build\"；references/preset-vs-defaults.md 全文两条路线决策表"
+        },
+        {
+          "assertion": "不提供任何'等网络再重试'的 uci-defaults 变通实现作为主方案",
+          "verdict": "pass",
+          "evidence": "Pitfalls L111 对网络依赖一刀切禁止（no curl/wget/opkg），全文（SKILL.md + 3 个 references）无任何 wait-for-network/重试式 uci-defaults 变通实现"
+        }
+      ],
+      "issues": [
+        "论证深度不足（WARN 根因）：拒绝 curl 拉取配置的立场明确，但'远程内容以 root 执行引入供应链/隐私风险'仅可由 uci-defaults-lifecycle.md L43（scripts run as root at S10）间接拼出，技能未把 root 执行与网络拉取的风险显式关联。建议在 Pitfalls 或 preset-vs-defaults.md 中补一句供应链/隐私风险论证。"
+      ]
+    },
+    {
+      "id": "openwrt-uci-defaults-03",
+      "routed_to": "openwrt-uci-defaults",
+      "expected_skills": ["openwrt-uci-defaults"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "解释 uci_apply_defaults 只删除成功退出（exit 0）的脚本，失败的保留并在下次开机重跑（boot L14-19）",
+          "verdict": "pass",
+          "evidence": "SKILL.md L8 与 Contracts L40 引 boot L14-L19；references/uci-defaults-lifecycle.md L10-L26 逐字给出 uci_apply_defaults 源码（`( . file ) && applied=...; rm -f $applied`），L32 \"Only successful files are deleted...This is the root cause of 'runs every boot'\"——断言引用的行号与技能引用精确对齐"
+        },
+        {
+          "assertion": "教用户手动执行 (. /etc/uci-defaults/99-setup); echo $? 复现失败退出",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow C L90 \"Run it by hand and check the exit code: ( . /etc/uci-defaults/50-mine ); echo $?\"——同构命令，替换文件名即 99-setup；与 boot 的 subshell source 语义（lifecycle ref L31）一致"
+        },
+        {
+          "assertion": "列出常见失败原因：目标 /etc/config 文件不存在、中间命令非零退出、缺少最终 exit 0",
+          "verdict": "pass",
+          "evidence": "SKILL.md L90 \"Any non-zero command chain (missing file, failing uci on a package not yet installed, a stray set -e) aborts before exit 0\"；references/uci-defaults-lifecycle.md L42 \"uci set foo.bar.baz on a package whose /etc/config/foo does not exist errors out — guard on the file\"（目标文件不存在）；L41 \"Do not use set -e-style aborts...any failing intermediate command marks the whole file failed\"；模板 L71 `[ -f /etc/config/uhttpd ] || exit 0` 即对应防护"
+        },
+        {
+          "assertion": "要求修复后验证幂等：连续跑两次均 exit 0 且配置收敛",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow C L91 \"run it twice by hand; the second run must still exit 0 and produce no config drift\"；Validation Gates L99 `sh -e \"$f\" && sh -e \"$f\"` double-run idempotence probe"
+        },
+        {
+          "assertion": "不建议用脚本自删（rm $0）来绕过失败",
+          "verdict": "pass",
+          "evidence": "SKILL.md Workflow C L93 \"Do not 'solve' re-runs by making the script delete itself — deletion is boot's job conditioned on success\"；Workflow C 第 4 步允许的 `rm /etc/uci-defaults/<file>` 是人工验证后的运维清理，与脚本自删有明确区分"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "warn": 2,
+    "fail": 0
+  }
+}

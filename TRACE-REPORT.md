@@ -50,7 +50,7 @@ python3 scripts/validate_skills.py --lenient  # 分阶段模式
 - **本仓 golden examples 尚未执行，标记 `Pending`**：20 个技能的 `examples/` 目录当前为空占位，本仓没有任何一次 QEMU 启动冒烟或 `idf.py` 构建在本仓产物上真实跑通。因此第二层证据为空，这是发布前的阻断项（对应 `PHASE-2-EVALUATION.md` Go/No-Go G5）。
 - 场景断言中出现的"Build Verification Only / Pending HIL"标注规范（CONVENTIONS §5）在文档层已落地并经结构校验，但其执行样例尚无本仓产物佐证。
 
-## 第三层：forward-test 计划（Pending forward-test run）
+## 第三层：forward-test（已执行第一轮，2026-09-02）
 
 **输入**：`evaluation/scenarios.json`（本报告同日生成），顶层 `{version: 0.1.0, generated: 2026-09-02, count: 65}`，65 条场景覆盖全部 20 个技能，由 `scripts/merge_scenarios.py` 合并（按技能名字典序、按 id 去重、`--check` 可复核一致性）。
 
@@ -90,7 +90,38 @@ python3 scripts/validate_skills.py --lenient  # 分阶段模式
 4. **只有原始证据满足该 case 全部 assertions 才计 pass**；部分满足计 fail 并注明未满足断言。
 5. 修改技能后重跑受影响 case；版本升级时全量重跑。
 
-当前状态：**`Pending forward-test run`（0/65 已执行）**。
+当前状态：**第一轮 forward-test 已执行（2026-09-02，65/65）**。
+
+### 第一轮执行记录
+
+- **方法**：批量新鲜上下文仿真——7 个并行执行器（FT-1…FT-7），各自先仅读 20 个 SKILL.md 前 12 行 frontmatter 构建"插件清单"并据此路由（禁止预读正文），再实读被路由技能全文与相关 references 作答，逐断言引用技能文件小节/行号判定。逐场景独立处理。**与 rust-skills 逐条全新上下文的严格形态相比为仿真近似**，方法学差异如实声明。
+- **结果**（`evaluation/forward-test/forward-test-summary.json`，含逐场景明细）：
+
+| 维度 | 结果 |
+|---|---|
+| 场景 | **54 pass / 10 warn / 1 fail**（65） |
+| 断言 | **276 pass / 11 warn / 1 fail**（288） |
+| 路由（expected_skills 成员资格） | **65/65 命中** |
+| 亮点 | refusal 类场景（编 DTB/私钥进 git/写死凭据/C3 默认引脚）全部被 description 字面命中；跨技能行号引用自洽 |
+
+- **FAIL（1）**：`esp32-idf-02` —— 场景设计与包自路由规则矛盾（expected 首元素为 esp32-idf，但 esp32-idf description 明示 OTA → esp32-ota）。**已修**：expected_skills 重排为 `[esp32-ota, esp32-idf]` 并泛化两条视角绑定断言（场景文件内含修正注记）。
+- **WARN（10）→ 全部已修**（内容增补直接闭合缺口，grep 复核在位，严格校验保持 0E0W）：
+
+| 场景 | 缺口 | 修复落点 |
+|---|---|---|
+| openwrt-amlogic-remake-04 | 查无 BOARD 报错串未记录 | `board-database.md` 补 `confirm_version` 报错（上游 L687-692） |
+| fw-core-02 | 破坏性操作契约不随单技能路由 | `emmc-install.md` 补破坏性操作契约 |
+| openwrt-uci-defaults-01 | 时区零覆盖 | `uci-defaults-lifecycle.md` 补 timezone 配置 |
+| openwrt-uci-defaults-02 | root+远程拉取供应链风险未显式关联 | `SKILL.md` 补供应链红线 |
+| fw-emulation-03 | 真实例不可定位 | `host-mocking.md` 补公开仓溯源（无本机路径） |
+| fw-release-gate-02 | 私钥泄露无处置 runbook | `release-checklist.md` 补 4 步 runbook |
+| openwrt-image-build-04 | postinst 失败无收敛操作法 | `files-injection-semantics.md` 补最小二分+反绕过 |
+| esp32-peripherals-01 | 引脚落点机制缺 | `SKILL.md` Workflow 1 补显式写入步骤 |
+| esp32-peripherals-03 | 迁移 hand-off 无专行 | `SKILL.md` Hand-off 表补迁移行 |
+| esp32-debug-02 | 缓解类观察项缺内容支撑 | `crash-triage.md` 补"假设性缓解"措辞规范 |
+
+- **口径说明**：routing_match 按 expected_skills **成员资格**判定（FT-5 曾按首元素比较致 esp32-idf-02 误计 false，汇总时已规范化并在本节注明）。
+- **再验证策略**：本轮 11 处修复均为内容增补/场景重排，grep 复核在位 + 严格校验通过；受影响 case 的复跑并入下一轮全量 forward-test。
 
 ## 自动化基线维护
 
@@ -108,7 +139,7 @@ python3 scripts/validate_skills.py                     # 结构门禁
 |---:|---|---|---|
 | 1 | **golden examples 可执行化** | 发布阻断（第二层） | 20 个 `examples/` 目录均为空占位。ESP-IDF 侧需锁定版本的 `idf.py` 构建样例，OpenWrt 侧需 QEMU（armsr/armv8 combined-efi）启动冒烟样例；两者均待可用的构建/虚拟化环境。补齐前第二层证据为空。 |
 | 2 | **真机 HIL 证据** | 硬件依赖（第二层） | 场景与技能文中承诺的 `HIL Verified` 徽章路径需要真实硬件（ESP32 系列 + 功率计/示波器；Amlogic 盒子 + 串口线）；待硬件到位后按 `fw-hil-testing` 验收矩阵取证。 |
-| 3 | **forward-test run** | 第三层 | 65 条场景 0/65 已执行；执行方法见上节，须新上下文逐条跑，全断言满足才计 pass。 |
+| 3 | **forward-test 第二轮** | 第三层 | 第一轮已于 2026-09-02 执行（54/10/1，11 处发现全部修复，见第三层执行记录）；受影响 case 复跑 + 版本升级全量重跑待排期。 |
 | 4 | **场景口径统一** | 低 | 把 assertions 内的 handoff 语义同步进 `expected_skills`（涉及 `esp32-freertos-01`、`openwrt-serial-recovery-03` 等），避免 forward-test 评分口径分歧。 |
 | 5 | **TinyNAS 引用泛化** | 低（见收尾审计报告） | `skills/` 内 25 处 TinyNAS 提及中，多数为带免责声明的模式引用（可留）；少数含内部仓库路径/本机绝对路径/实名脚本案例，建议后续泛化，清单见 Phase 3 收尾汇报。 |
 | 6 | **`esp32-matter` / `esp32-ble` / `openwrt-wireless` 候选基线走读** | 下一扩容批次 | 见 `PHASE-2-EVALUATION.md` 候选池；须在待办 1 的 golden example 基础设施就绪后启动。 |

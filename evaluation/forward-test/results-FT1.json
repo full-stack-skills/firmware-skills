@@ -1,0 +1,240 @@
+{
+  "batch": "FT1",
+  "results": [
+    {
+      "id": "fw-core-01",
+      "routed_to": "fw-core",
+      "expected_skills": ["fw-core", "rust-embedded"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "明确声明 firmware-skills 包不覆盖 Rust no_std 固件（refusal），不得用 ESP-IDF/C 知识硬答",
+          "verdict": "pass",
+          "evidence": "fw-core/SKILL.md frontmatter L3 'Do NOT use for Rust no_std firmware — hand off to rust-skills/rust-embedded instead'; SKILL.md L16（Determine Task Type #3：本包不覆盖，显式移交）; L99 Pitfalls #3 '不要用本包接 Rust no_std 任务…也不要用通用 C/ESP-IDF 知识硬答'; references/task-typing.md L38 '不要用通用嵌入式 C 知识硬答 Rust no_std 问题'"
+        },
+        {
+          "assertion": "显式移交到 rust-skills/rust-embedded，并说明该 Skill 覆盖 target/runtime、embedded-hal、Embassy/RTIC、烧写与硬件验收",
+          "verdict": "pass",
+          "evidence": "fw-core SKILL.md L77（Hand-off 表末行：包外 rust-skills/rust-embedded，refuse 并移交）; references/task-typing.md L36 拒绝话术逐字覆盖 '它覆盖 target/runtime 选择、embedded-hal 驱动、Embassy/RTIC、probe-rs 烧写与硬件验收证据'; references/routing-esp32.md L47 同步声明"
+        },
+        {
+          "assertion": "不编造 Cortex-M 具体型号的内存布局或链接脚本",
+          "verdict": "pass",
+          "evidence": "拒绝路径下不产出任何 Cortex-M 技术细节（task-typing.md L34-38）；fw-core SKILL.md L49 Contracts：'涉及…内存布局…的问题：不确定即停…禁止凭记忆给值（CONVENTIONS §2 反幻觉红线）'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-core-02",
+      "routed_to": "openwrt-amlogic-remake",
+      "expected_skills": ["fw-core", "openwrt-amlogic-remake"],
+      "routing_match": true,
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "识别 N1（Phicomm N1，Amlogic S905D 盒子）属于 Amlogic 盒子写 eMMC 场景，主路由 openwrt-amlogic-remake",
+          "verdict": "pass",
+          "evidence": "openwrt-amlogic-remake SKILL.md frontmatter L3 'Use when users ask to build images for boxes such as Phicomm N1'; references/board-database.md 'N1 行原文（conf L52，ID 101）'：MODEL=Phicomm-N1、SOC=s905d、BOARD=s905d；SKILL.md Pitfalls L84 '不要用 n1 当 -b 值 —— board id 是 s905d'"
+        },
+        {
+          "assertion": "若需预装自定义服务/文件，说明 rootfs 侧先走 openwrt-image-build 产 rootfs.tar.gz，再交 remake 链",
+          "verdict": "pass",
+          "evidence": "openwrt-amlogic-remake SKILL.md L13（Determine Task Type #2：用 IB FILES= 产自定义 rootfs.tar.gz 再喂 remake）; L71（Workflow #6：回到 openwrt-image-build 重出 rootfs.tar.gz 再喂 remake）; Pitfalls L87 fork 零 commit 纪律"
+        },
+        {
+          "assertion": "在执行写 eMMC 前确认目标盘符并提示破坏性操作",
+          "verdict": "warn",
+          "evidence": "openwrt-amlogic-remake SKILL.md 全文无'写 eMMC 前复述目标盘符并获确认'契约；唯一防护是 references/emmc-install.md '用户侧安装流' #4 装前备份（openwrt-ddbr 备份 Android TV）与 USB 启动优先说明。显式红线在 fw-core/SKILL.md L50 Contracts（'写 eMMC/烧写 flash 是破坏性操作：执行前必须复述目标盘符并获用户确认'），但按单技能路由 fw-core 未被加载。判 WARN 非 FAIL：备份先行已给出实质防护"
+        },
+        {
+          "assertion": "引用'构建成功≠硬件可用'，无硬件证据时标注 Build Verification Only",
+          "verdict": "pass",
+          "evidence": "openwrt-amlogic-remake SKILL.md L75 Validation Gates '按证据强度分层；缺哪层就标哪层，不越级宣布成功'; L79 '只有走到这一步才能宣布可用；仅完成 1-2 标注 Build Verification Only，缺真机证据标注 Pending HIL'。该技能用等价表述（精确 motto 字串在 fw-core L37 / openwrt-image-build L152），行为要求满足"
+        }
+      ],
+      "issues": [
+        "openwrt-amlogic-remake 缺破坏性操作确认契约：'写 eMMC 前确认目标盘符'红线只存在于 fw-core SKILL.md L50；N1 实际流程中 eMMC 写入发生在设备内 luci-app-amlogic 交互安装（references/emmc-install.md），不存在宿主侧盘符，断言措辞与被路由技能的防护手段（ddbr 装前备份）错位，单技能执行只能部分满足",
+        "场景路由歧义（不影响 routing_match）：fw-core frontmatter 触发词含'刷机/N1/Amlogic 盒子写 eMMC'，openwrt-amlogic-remake 也直接命中同一请求；若路由 fw-core 则该断言可 PASS（fw-core L50），两技能契约未互相引用，单技能自包含性不足"
+      ]
+    },
+    {
+      "id": "fw-core-03",
+      "routed_to": "fw-core",
+      "expected_skills": ["fw-core", "esp32-lowpower", "esp32-secureboot", "esp32-variants", "fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "续航需求路由 esp32-lowpower，并建议先用 esp32-variants 评估低功耗芯片型号",
+          "verdict": "pass",
+          "evidence": "fw-core SKILL.md L69（Hand-off：低功耗→esp32-lowpower）、L72（芯片选型→esp32-variants）; references/routing-esp32.md L16（'电池供电/续航 → esp32-lowpower'）、L33 典型组合'省电设备：esp32-lowpower → esp32-variants（C 系列通常更优）→ fw-hil-testing（实测电流）'"
+        },
+        {
+          "assertion": "签名校验路由 esp32-secureboot（Secure Boot V2）",
+          "verdict": "pass",
+          "evidence": "fw-core SKILL.md L70（安全启动/Flash 加密→esp32-secureboot）; references/routing-esp32.md L17 '安全合规 → esp32-secureboot（Secure Boot V2 / Flash 加密）'"
+        },
+        {
+          "assertion": "给出顺序：选型 → 低功耗设计 → 安全启动 → fw-hil-testing 实测验证",
+          "verdict": "pass",
+          "evidence": "references/routing-esp32.md L32 '量产前：esp32-secureboot → esp32-ota（AB 分区）→ fw-hil-testing → fw-release-gate' 与 L33 '省电设备：esp32-lowpower → esp32-variants → fw-hil-testing（实测电流）'；两模板合成即得低功耗（含选型评估）→安全启动→HIL 实测，HIL 收尾；fw-core SKILL.md L86 Workflow #4 跨链路任务按链路顺序串行移交。注：L33 模板中 variants 位于 lowpower 之后而非之前，与断言的'选型先行'有微差，但用户芯片已定（S3），variants 为评估步骤，位置可组合，不影响断言实质"
+        },
+        {
+          "assertion": "路由前先问 ESP-IDF 版本与模组型号（Contracts）",
+          "verdict": "pass",
+          "evidence": "fw-core SKILL.md L23 Prerequisites '路由前必须先确认两件事，用户没说就问，不要猜'; references/routing-esp32.md L36-41 Contracts：'芯片型号与 revision、模组/开发板型号；ESP-IDF 版本（基线以 esp32-idf 内声明为准）'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-core-04",
+      "routed_to": "fw-emulation",
+      "expected_skills": ["fw-core", "fw-emulation"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "识别'无板先跑'为模拟验证场景，路由 fw-emulation",
+          "verdict": "pass",
+          "evidence": "fw-emulation frontmatter L3 'Use when users say 没有板子先验证, 无板测试…'; SKILL.md L13（Determine Task Type #2：没有设备先验证业务逻辑→Workflow B 宿主级 mock）; L15（#4 ESP32 无板仿真诚实边界）"
+        },
+        {
+          "assertion": "说明模拟验证结果不等于硬件可用，后续仍需 fw-hil-testing 上板验收",
+          "verdict": "pass",
+          "evidence": "fw-emulation SKILL.md L8 '两级都不证硬件行为——模拟通过 = Build/Boot Verification Only，不等于硬件可用'; Contracts L37-38（证据分层、禁止越级宣称）; Workflow B L86 '宿主测试全绿仍只证逻辑；上板行为 → fw-hil-testing'; Validation Gates L93 '无真机证据的最终结论一律补 Pending HIL'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-image-build-01",
+      "routed_to": "openwrt-image-build",
+      "expected_skills": ["openwrt-image-build"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "正确回答：FILES= 是覆盖式合并而非整包替换——同路径文件被覆盖、覆盖层未涉及的既有文件原样保留，不会删除 rootfs 里已有文件（依据 rootfs.mk prepare_rootfs 的 file_copy 语义）",
+          "verdict": "pass",
+          "evidence": "openwrt-image-build SKILL.md L114 '覆盖式合并，不是整包替换：file_copy 把覆盖层 cp 到已装好的 rootfs 上。同路径文件被覆盖；覆盖层没碰的既有文件原样保留'（引 rootfs.mk:71-74 + rules.mk:475-488）; references/files-injection-semantics.md §1 同结论"
+        },
+        {
+          "assertion": "说明合并前会先清除覆盖路径上的同名符号链接（rules.mk file_copy）",
+          "verdict": "pass",
+          "evidence": "openwrt-image-build SKILL.md L115 '先删同名符号链接：合并前先清除 rootfs 中将被覆盖路径上的符号链接（rules.mk:480-486），避免 cp 跟链写穿'; references/files-injection-semantics.md §1 file_copy 两步之第 1 步"
+        },
+        {
+          "assertion": "指出 FILES= 也无法用来删除文件；要移除内容用 PACKAGES= 的 -包名 语法",
+          "verdict": "pass",
+          "evidence": "references/files-injection-semantics.md §1 结论 '想删掉 rootfs 里某个既有文件，FILES= 做不到（它只增改不删）——替代方案：用 -包名 移除所属包'; SKILL.md L96 'PACKAGES=\"-pkg-c\" 从默认集移除 pkg-c'; Pitfalls L156"
+        },
+        {
+          "assertion": "给出可复制的覆盖层目录结构与 make image FILES= 命令",
+          "verdict": "pass",
+          "evidence": "SKILL.md §4 L102-110（tinynas-files 覆盖层目录树：etc/init.d、etc/uci-defaults、etc/config、www/ 等）; L121-129（make image PROFILE=... PACKAGES=... FILES=$(pwd)/files 完整命令）"
+        },
+        {
+          "assertion": "提醒 init.d 脚本不要手放 /etc/rc.d/，IB 会按 rc.common shebang 自动 enable",
+          "verdict": "pass",
+          "evidence": "SKILL.md L116 'init.d 脚本不要手放 /etc/rc.d/：prepare_rootfs 对带 #!/bin/sh /etc/rc.common shebang 的 /etc/init.d/* 自动执行 enable'（rootfs.mk:104-113）; references/files-injection-semantics.md §3; Pitfalls L157"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-image-build-02",
+      "routed_to": "openwrt-image-build",
+      "expected_skills": ["openwrt-image-build", "openwrt-amlogic-remake"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "说明官方 IB 直出不产 Amlogic 盒子 eMMC 镜像，N1 场景需走 ophub 重打包链",
+          "verdict": "pass",
+          "evidence": "openwrt-image-build SKILL.md L13（Determine Task Type #2：N1 写 eMMC→本 Skill 只产 rootfs.tar.gz，重打包移交 openwrt-amlogic-remake）; Pitfalls L161 '不要在 rootfs.tar.gz 之外还想让 IB 直接产出盒子 eMMC 镜像——那是 remake 链的活'; Contracts L46"
+        },
+        {
+          "assertion": "给出正确链路：本 Skill 产 armsr rootfs.tar.gz（PACKAGES/FILES 定制保留），再移交 openwrt-amlogic-remake 重打包",
+          "verdict": "pass",
+          "evidence": "SKILL.md L13; Hand-off 表 L54; Pitfalls L158 'ophub 重打包消费的是 armsr 的 armv8 generic rootfs.tar.gz'；PACKAGES/FILES 定制经 Workflow §3-§4 完整支持，产物收集含 *rootfs.tar.gz（L137）"
+        },
+        {
+          "assertion": "纠正'IB 输入是 rootfs.tar.gz'的误解：官方 IB 输入是 repositories.conf 提供的 ipk，rootfs.tar.gz 是开启 CONFIG_TARGET_ROOTFS_TARGZ 的产物",
+          "verdict": "pass",
+          "evidence": "SKILL.md Pitfalls #3 L158 逐字覆盖：'官方 IB 的输入是 repositories.conf 提供的 ipk（opkg --offline-root 装包，IB Makefile L93-97）；rootfs.tar.gz 只是 target 开启 CONFIG_TARGET_ROOTFS_TARGZ 时的产物（image.mk:372-376）'; references/files-injection-semantics.md §4 同"
+        },
+        {
+          "assertion": "构建产物在真机验证前标注 Build Verification Only",
+          "verdict": "pass",
+          "evidence": "SKILL.md Validation Gates #6 L152 '构建成功 ≠ 硬件可用：无真机刷写验证前，一切结论标注 Build Verification Only；刷写验证与在环测试移交 fw-hil-testing'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-image-build-03",
+      "routed_to": "openwrt-image-build",
+      "expected_skills": ["openwrt-image-build"],
+      "routing_match": true,
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出三层包列表组织方式与 PACKAGES='-ppp-mod-pppoe docker-... samba4...' 的追加/移除混合语法",
+          "verdict": "pass",
+          "evidence": "SKILL.md §3 L87-94（三层包列表 common/tier/arch 生产模板）; L96 'PACKAGES=\"pkg-a pkg-b\" 追加；PACKAGES=\"-pkg-c\" 从默认集移除'; references/packages-layering.md §1 L9 'PACKAGES=\"-a b\" 可以同条指令内既移除又追加'（即 -ppp-mod-pppoe docker-... samba4-... 混合形态）"
+        },
+        {
+          "assertion": "构建前用 make info 实证 PROFILE、用 make manifest 预演清单",
+          "verdict": "pass",
+          "evidence": "SKILL.md §2 L79-83（make info 列 Profiles，与 SupportedDevices 对照，找不到即停）; L96 末行 '先 make manifest 预演清单再出镜像'; Validation Gates #2 L148"
+        },
+        {
+          "assertion": "构建后核对 manifest/sha256sum 校验，验证产物存在且校验和通过",
+          "verdict": "pass",
+          "evidence": "SKILL.md §5 L133-141（收集产物并生成 .sha256 sidecar）; Validation Gates #3-#5 L149-151（退出码 0、'产物存在且 sha256sum -c 通过'、unsquashfs -l/解包抽查）; references/packages-layering.md §3.4（从 .manifest 核对最终清单）"
+        },
+        {
+          "assertion": "说明构建成功不等于硬件可用，真机验收移交 fw-hil-testing",
+          "verdict": "pass",
+          "evidence": "SKILL.md Validation Gates #6 L152 逐字：'构建成功 ≠ 硬件可用…刷写验证与在环测试移交 fw-hil-testing'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "openwrt-image-build-04",
+      "routed_to": "openwrt-image-build",
+      "expected_skills": ["openwrt-image-build"],
+      "routing_match": true,
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "解释根因：prepare_rootfs 会重放所有包的 postinst 脚本，任一非零退出即中止构建（rootfs.mk）",
+          "verdict": "pass",
+          "evidence": "references/files-injection-semantics.md §2（rootfs.mk:84-94）：'opkg 包的 usr/lib/opkg/info/*.postinst…prepare_rootfs 用 bash 逐个重放…任一脚本非零退出 → 整个镜像构建失败'; SKILL.md L131（构建流程含 prepare_rootfs 覆盖层合并 + postinst 重放）; Validation Gates #3 L149 'postinst 重放失败会使构建失败（rootfs.mk:86-94）'"
+        },
+        {
+          "assertion": "排查方向：覆盖层是否覆盖破坏了该 postinst 依赖的文件（如同名 UCI 配置语法错误）",
+          "verdict": "pass",
+          "evidence": "references/files-injection-semantics.md §2 排查含义 '先看是哪个包的 postinst，通常是覆盖层破坏了它要配置的文件（如同名 UCI 文件语法错）'; §9 症状对照表 '构建失败 postinst failed → §2：覆盖层破坏了包脚本依赖的文件'"
+        },
+        {
+          "assertion": "建议用最小覆盖层二分定位，而不是删除报错日志绕过",
+          "verdict": "warn",
+          "evidence": "缺口：SKILL.md 与 references/files-injection-semantics.md 均无'最小覆盖层二分定位'的操作步骤，也未明文禁止'删报错日志/绕过门禁'式的假修复；根因方向（§2）与症状表（§9）只定位到'哪个包、覆盖层破坏了什么'，未给出收敛手段。'不绕过'纪律仅隐含于 Validation Gates #3（无 postinst failed 行才算过），未针对该场景显式化"
+        }
+      ],
+      "issues": [
+        "postinst 失败的收敛手段缺失：技能给出根因与排查方向，但没有'最小覆盖层二分'这类可执行定位法，也没有显式的反绕过条款（如'禁止注释掉失败 postinst/删日志强行出镜像'），按技能执行只能给出方向正确的部分答案"
+      ]
+    }
+  ],
+  "summary": {
+    "pass": 6,
+    "warn": 2,
+    "fail": 0
+  }
+}

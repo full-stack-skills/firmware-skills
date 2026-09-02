@@ -1,0 +1,315 @@
+{
+  "batch": "FT6",
+  "protocol_notes": "Routing was performed using ONLY the frontmatter descriptions (first 12 lines of each of the 20 SKILL.md files). Afterwards, the routed skill's SKILL.md body and references were read in full to answer the prompt and grade assertions. skills/ files were not modified. Cited line numbers refer to the files as read on 2026-09-03.",
+  "results": [
+    {
+      "id": "esp32-peripherals-01",
+      "prompt": "别跟我讲原理，直接告诉我 ESP32-C3 的 I2C 默认引脚是哪两个号，我照着接线就行。",
+      "routed_to": ["esp32-peripherals"],
+      "expected_skills": ["esp32-peripherals"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter 明确覆盖 'ask which pins to use on a given ESP32 chip' 且自带 'REFUSES to quote default pin numbers for a chip from memory'，与本题一字不差。",
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "refusal：拒绝编造'C3 的 I2C 默认引脚号'——ESP-IDF 引脚多可矩阵映射，没有跨板统一的默认值，反幻觉红线",
+          "verdict": "PASS",
+          "evidence": "esp32-peripherals/SKILL.md L89（Pitfalls 1）原文点名本题：'不要回答\"某芯片的 I2C 默认引脚号\"这类问题而不核验——ESP-IDF 多数引脚可矩阵映射，没有跨板统一的\"默认\"，必须 datasheet + 用户原理图确认（典型 refusal 场景）'；L8（硬件契约优先：引脚一律 datasheet/原理图为准，禁止编造）；L36（Contracts：不确定即停，禁止给'常见值'）。"
+        },
+        {
+          "assertion": "给出核验路径：芯片 datasheet/技术参考手册的 IO MUX 章节 + 用户板原理图确认实际连接",
+          "verdict": "PASS",
+          "evidence": "esp32-peripherals/SKILL.md L36（读 datasheet/技术参考手册/IO MUX 表或板原理图）；Workflow 1 L67（'打开该芯片 datasheet 的 IO MUX/引脚定义章节，列出候选引脚'）、L68（'对照板原理图确认引脚实际连接与上/下拉电阻现状'）。"
+        },
+        {
+          "assertion": "说明工程侧如何指定引脚（驱动配置参数/menuconfig），并提醒避开 Strapping 引脚、其值禁止编造",
+          "verdict": "WARN",
+          "evidence": "Strapping 侧充分：SKILL.md L37（'禁止编造 Strapping 引脚值；涉及时先查 datasheet 再接线'）、L67（'记录哪些是 Strapping 引脚并避开'）、L83（Gate：Strapping 引脚未被误用）。但'工程侧如何指定引脚'的具体机制（驱动配置参数字段或 menuconfig 项）正文无任何小节说明，仅 frontmatter L3 一笔带过（'routes to datasheet + menuconfig/runtime verification'）；L69 只到'写成清单给用户确认，再写代码'即止。按技能作答需助手自行从 IDF API 补齐配置写法，指引存在但薄弱。"
+        },
+        {
+          "assertion": "不接受'照网上教程接线'替代 datasheet 核验（教程可能对应其他芯片/模组）",
+          "verdict": "PASS",
+          "evidence": "esp32-peripherals/SKILL.md L70：'若 datasheet 与网上教程冲突：以 datasheet 为准，并提醒教程可能对应不同芯片'。"
+        }
+      ],
+      "issues": [
+        "WARN（断言3）：正文（Workflow 1 / Contracts）未给出工程侧指定引脚的具体机制（驱动配置参数或 menuconfig 项），相关措辞仅出现在 frontmatter L3；建议在 Workflow 1 增补一步'在驱动初始化配置中写入经核验的引脚号'或指向 bus-quickref 的配置要点。"
+      ]
+    },
+    {
+      "id": "esp32-peripherals-02",
+      "prompt": "用最新版 ESP-IDF 接一个温湿度传感器到 I2C 上，该用哪个驱动头文件？我网上找的例程用的是 driver/i2c.h，编译说找不含。",
+      "routed_to": ["esp32-peripherals"],
+      "expected_skills": ["esp32-peripherals"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter 显式收录 'driver headers like i2c_master.h' 与 'I2C/SPI/UART/传感器接线'，精确命中。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "指出 v6.x 新式 I2C master 驱动为 driver/i2c_master.h（esp_driver_i2c 组件，2026-09-02 官方 stable 文档核验），网上 v5 例程接口已过时",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L31（'driver/i2c_master.h（esp_driver_i2c 组件）为官方 stable 文档当日核验的 I2C master 新接口'，基线 2026-09-02 见 L30）；决策表 L46；bus-quickref.md L10（含 CMakeLists 'REQUIRES esp_driver_i2c'，标'已核验'）。旧接口定性：SKILL.md L8/L90（legacy 在 v6.0 已移除）、bus-quickref L11（'I2C legacy：新式页已不收录'）——可明确告知 driver/i2c.h 为已移除的旧接口。"
+        },
+        {
+          "assertion": "传感器地址 7 位/8 位写法、速率上限按器件手册核对，不替用户编造地址",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L39（Contracts 器件侧：'I2C 从机地址……以外设器件手册为准'）；Workflow 2 L75（'核对 7 位/8 位地址写法、速率是否超器件上限'）；Pitfall L92；bus-quickref L25（'主频从器件手册上限取保守值……7 位地址与 8 位写法不要混用'）。"
+        },
+        {
+          "assertion": "上拉与电气检查先行：开漏总线需上拉，读板原理图确认是否已有",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L74（Workflow 2 '先电气后代码：供电、共地、上拉……'）、L68（原理图确认上/下拉现状）、L38（'I2C 是否需要外部上拉按总线电气计算'）；bus-quickref L26（'I2C 开漏总线，按总线电容与速率核算上拉阻值；芯片内部上拉偏弱，外置上拉更可靠'）。"
+        },
+        {
+          "assertion": "要求无硬件证据时只标 Build Verification Only，不声称'通信正常'",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L84（'总线通信有证据：器件应答/正确数据/示波器波形，三者之一才算通'）、L85（'无硬件证据时标注 Build Verification Only'）；bus-quickref L44。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-peripherals-03",
+      "prompt": "我把工程从 IDF v5.5 升到 v6 之后，ADC 读电池电压的代码全飘红，driver/adc.h 里的函数都没了，怎么办？",
+      "routed_to": ["esp32-peripherals", "esp32-idf"],
+      "expected_skills": ["esp32-peripherals", "esp32-idf"],
+      "routing_match": true,
+      "routing_rationale": "凭清单存在双命中：esp32-peripherals（'ADC 采样'、'legacy drivers removed in v6.0'）承接具体 ADC 驱动问题为主；esp32-idf（'v5→v6 migration of removed legacy drivers'、'v5 工程升级 v6 编译报错'）承接工程迁移。主路由 esp32-peripherals 与 expected[0] 一致。",
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "定位根因：v6.0 移除了 legacy ADC 驱动（基线高置信），必须改用新接口",
+          "verdict": "PASS",
+          "evidence": "adc-caveats.md L8（'v6.0 已移除 legacy ADC 驱动（基线高置信）——v5 老代码里的 legacy ADC 调用升 v6 必然报错，改用当前新接口'）、L31（排障表行'升级 IDF 后编译报错 | legacy 驱动被移除（v6.0），换新接口'）；SKILL.md L31/L49/L90。"
+        },
+        {
+          "assertion": "ADC 新接口确切头文件/API 名标注'运行时核验'（本机 IDF 源码树 find + 官方 ADC 页），不凭记忆背 API",
+          "verdict": "PASS",
+          "evidence": "adc-caveats.md L9-13（'新接口的确切头文件与 API 名：以本机 IDF 源码树与官方 API 参考（ADC 页）为准（运行时核验）'+ find 命令）；SKILL.md L32（'其余外设头文件名未逐个抓取——引用时标\"运行时核验\"，不凭记忆补全'）；adc-caveats L42-43 反幻觉提示；L15（先 idf.py --version 区分 v5/v6）。"
+        },
+        {
+          "assertion": "工程层面的版本与迁移策略（依赖/迁移指南）移交 esp32-idf 的 v5-to-v6 迁移流程（handoff）",
+          "verdict": "WARN",
+          "evidence": "移交语义有支撑但不显式：frontmatter L3（'project/build issues to esp32-idf'）；Hand-off 表 L57 仅一行'工程骨架/构建烧写/分区表 → esp32-idf'，无'版本迁移/工程升级'专行；正文只有 SKILL.md L99 的官方 Migration Guides 链接与 L30'驱动迁移事实以日期化基线为准'。'v5→v6 迁移流程'作为整体流程定义在 esp32-idf（其 frontmatter 明示），esp32-peripherals 正文未写明对该场景的移交触发条件；若助手只读正文 Hand-off 表，可能漏移交。"
+        },
+        {
+          "assertion": "量程/衰减档按芯片 datasheet 核验，衰减与非线性的逐芯片数值不写死",
+          "verdict": "PASS",
+          "evidence": "adc-caveats.md L4（'逐芯片的量程/衰减档位/校准系数本文件不给数——以芯片 datasheet 与本机 IDF API 为准'）、L19（'衰减档位与输入电压上限逐芯片不同——先查 datasheet 的 ADC 特性章节，再选衰减档；不要按默认档能用写死'）、L20（非线性常态）、L42-43（反幻觉：位宽/衰减表/校准公式不写死）；电池场景 L23（分压电阻精度、量程落档确认）。"
+        }
+      ],
+      "issues": [
+        "WARN（断言3）：esp32-peripherals 正文 Hand-off 表（L53-62）缺少'版本迁移/工程升级 → esp32-idf'显式行，v5→v6 移交仅靠 frontmatter L3 与 esp32-idf 清单措辞隐式成立；建议在 Hand-off 表或 adc-caveats 排障表补一行显式移交。"
+      ]
+    },
+    {
+      "id": "esp32-variants-01",
+      "prompt": "我要做一个支持 Matter 的智能灯，需要 Thread 和 Zigbee，最好还能连 Wi-Fi，选哪颗 ESP32？另外有款产品只要 Zigbee 不用 Wi-Fi，能用更省电的吗？",
+      "routed_to": ["esp32-variants"],
+      "expected_skills": ["esp32-variants"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter：'asking which ESP32 to use for Thread, Zigbee, Wi-Fi 6, BLE-only'——Thread/Zigbee/Wi-Fi 组合选型是 esp32-variants 的字面触发条件。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "按矩阵硬过滤：Wi-Fi + BLE + 802.15.4（Thread/Zigbee）三全 → ESP32-C6；只要 Zigbee/Thread 不要 Wi-Fi → ESP32-H2（BLE 5 + 802.15.4，Thread 1.3/Zigbee 认证）",
+          "verdict": "PASS",
+          "evidence": "chip-matrix.md L14（C6：'有（802.11ax，Wi-Fi 6）| BLE 5 | 有（Thread/Zigbee）'）、L15（H2：'无 Wi-Fi | BLE 5 | 有（Thread 1.3 / Zigbee 认证）'）；SKILL.md L46-47 矩阵同数据；selection-tree.md L11-12（'还要 Wi-Fi → ESP32-C6……不需要 Wi-Fi → ESP32-H2'）；省电起点 selection-tree L43（'Thread/Zigbee 纯终端（无 Wi-Fi）| H2 | 96 MHz，功耗与成本优先'）；SKILL.md L63 硬过滤步骤。"
+        },
+        {
+          "assertion": "走决策树路径并能回指（selection-tree），结论不超出矩阵事实",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L64（Workflow 步骤 3 '决策树收敛（见 selection-tree.md）'）；Validation Gate L69（'选型结论必须能回指矩阵某一行 + 决策树某条路径，且需求三要素逐项对上'）；selection-tree L24（收敛次序：射频硬过滤 → 算力/核数 → 成本/封装）。"
+        },
+        {
+          "assertion": "明确 Matter/Thread 协议栈实现属后续工程问题，芯片确定后移交 esp32-idf（handoff 语义）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L54（'选定芯片后建工程/迁移构建 → esp32-idf'）、L65（Workflow 步骤 4 '……再移交 esp32-idf 建工程'）、L56（'Thread/Zigbee 协议栈实现细节 → 官方 ESP-IDF 文档（超出本包范围时说明）'）。注：'Matter'字面在技能文件中未出现，协议栈边界以 Thread/Zigbee 条目覆盖，但移交语义完整。"
+        },
+        {
+          "assertion": "引用能力事实带'截至 2026-09-02'基线口径，不脑补未列芯片细节",
+          "verdict": "PASS",
+          "evidence": "chip-matrix.md L4（基线走读 2026-09-02）、L39（'引用本矩阵时带\"截至 2026-09-02\"'）；SKILL.md L29（日期化基线）、L79（Pitfall 5：中置信条目 C5/S31 只提示存在不给结论）；chip-matrix L21-23。"
+        }
+      ],
+      "issues": [
+        "备注（非缺陷）：'Matter' 一词未在 esp32-variants 任何文件出现；技能以 Thread/Zigbee 能力覆盖该需求且判定不受影响，但若用户追问 Matter 协议栈本身，技能只能指向 L56 的'官方 ESP-IDF 文档'。可作为后续增强（在 description 或 selection-tree 增加 Matter 关键词）。"
+      ]
+    },
+    {
+      "id": "esp32-variants-02",
+      "prompt": "ESP32-C3 最低需要哪个版本的 ESP-IDF 才能开发？网上说法不一样，你直接告诉我个准数。",
+      "routed_to": ["esp32-variants"],
+      "expected_skills": ["esp32-variants"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter 双重命中：'verify minimum supported ESP-IDF versions at runtime instead of fabricating them' 与红线 'Do NOT state per-chip minimum ESP-IDF versions (UNVERIFIED)'。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "refusal：拒绝写死'最低 IDF 版本'——基线明确该对照表 UNVERIFIED，官方无合并对照表",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8（'各芯片\"最低 IDF 版本\"为 UNVERIFIED——本 Skill 拒绝写死，只给官方核验方法'）；chip-matrix.md L32-34（'未找到官方合并对照表，禁止写死\"最低 vX.Y\"'）；SKILL.md L75（Pitfall 1）；Validation Gate L70（'\"该芯片最低需要 IDF vX.Y\"这类结论不得出现'）——refusal 是技能的硬性输出要求。"
+        },
+        {
+          "assertion": "给出三步运行时核验法：stable 文档按 target 切换（/esp32c3/get-started/）→ GitHub release notes 查新增支持 → 本机 idf.py set-target esp32c3 + build 实测",
+          "verdict": "PASS",
+          "evidence": "selection-tree.md L26-34 逐条对应：L30（stable 文档按 target 切换，示例 URL 正是 esp32c3）、L31（GitHub release notes 查新增/preview 支持）、L32（'idf.py set-target <target> 成功生成 sdkconfig 且 idf.py build 通过'）。"
+        },
+        {
+          "assertion": "说明'文档支持 ≠ 本机版本支持'，以实测为准",
+          "verdict": "PASS",
+          "evidence": "selection-tree.md L32 原文：'文档支持 ≠ 本机版本支持'；L34 回答模板以'本机请以 idf.py set-target 实测为准'收尾。"
+        },
+        {
+          "assertion": "不用'网上说法'或模型记忆充当权威来源",
+          "verdict": "PASS",
+          "evidence": "selection-tree.md L26 标题'（禁止背答案）'；SKILL.md L25（'按 selection-tree 的官方核验法确认，不凭记忆'）、L75；Prompt 中'网上说法'在技能框架下只能被替换为三步核验法输出。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-variants-03",
+      "prompt": "听说 ESP32-P4 性能最强，我想拿它做一个直接连 Wi-Fi 6 的摄像头网关，可行吗？",
+      "routed_to": ["esp32-variants"],
+      "expected_skills": ["esp32-variants"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter：'comparing ESP32 variants, asking which ESP32 to use for … Wi-Fi 6'；P4 射频能力属家族对比范畴。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "纠正高频错误：P4 无片上射频，不能自己连 Wi-Fi（基线点名错误点）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8（高频错误点第一项'P4 无片上射频'）；chip-matrix.md L16（P4 行'无片上射频'）、L27（高频错误点 1 'P4 无片上射频——选 P4 意味着无线要靠伴生芯片方案'）；SKILL.md L76（Pitfall 2：'不要说\"P4 可以自己连 Wi-Fi\"'）。"
+        },
+        {
+          "assertion": "给正确路径：P4 经 ESP-Hosted/ESP-AT 用 C/S 系列芯片作伴生获得无线能力，架构成本需评估",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L35（Contracts：'P4 经 ESP-Hosted/ESP-AT 用 C/S 系列作伴生'，且'伴生芯片方案要显式说明'）；chip-matrix.md L18（'官方页原文，高置信'）；selection-tree.md L20（'无线主机（高性能应用核，Wi-Fi 靠伴生）→ ESP32-P4 + ESP-Hosted/ESP-AT'）。'成本需评估'由'方案要显式说明'+决策树成本维度（L24 收敛次序）支撑，属自然推论。"
+        },
+        {
+          "assertion": "Wi-Fi 6 需求指向 C6（802.11ax），对比单芯片方案与 P4+伴生方案",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L46（C6 行'Wi-Fi 6 (802.11ax) + BLE 5 + 802.15.4'）；chip-matrix L14；selection-tree L42（'Thread/Zigbee 网关或路由器 | C6 | 兼有 Wi-Fi 6'）与 L20（P4+伴生）——两条路径均在决策树内，可支撑单芯片 vs P4+伴生的对比结论；SKILL.md L78 Pitfall 4 提醒 C3/C6 不能混（802.11ax 只有 C6）。"
+        },
+        {
+          "assertion": "不做超出矩阵的细节断言（外设数量/GPIO 数等），引导查官方选型页与数据手册",
+          "verdict": "PASS",
+          "evidence": "chip-matrix.md L38（'外设数量、GPIO 总数、封装、温度等级、供货状态等一律引导用户查官方选型页与数据手册，不在本文件内给数'）；selection-tree L49；SKILL.md L36（'封装/外设/供货由用户按官方选型页与模组数据手册确认'）。摄像头/ISP 细节同样不在矩阵范围，答案被约束在射频与核数事实。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-wifi-provision-01",
+      "prompt": "我们要量产一款 ESP32-C3 的智能插座，配网方式还没定，产品经理说越简单越好，你们建议怎么选？",
+      "routed_to": ["esp32-wifi-provision"],
+      "expected_skills": ["esp32-wifi-provision"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter：'asks SmartConfig 还是 BLE 配网 / Unified Provisioning 怎么接'+'量产'场景（'production security red lines'）——量产配网选型是字面主路径（Determine Task Type 1）。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出四种官方方式选型对比（Unified Provisioning / SmartConfig / DPP / protocomm），默认推荐 Unified Provisioning + Security 2",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L44-53 四方式选型表（基线 §7 高置信）；L48（'Unified Provisioning（推荐）……Security 0/1/2 可选（默认选 2）；有官方 iOS/Android App'）；Workflow L86（'量产默认 Unified Provisioning + Security 2'）；provisioning-comparison.md §1 判据表 L7-15。"
+        },
+        {
+          "assertion": "传输层按 BLE vs SoftAP 给出判据：C3 支持 BLE，BLE 传输约需 110KB RAM，需确认 App 门槛（官方 ESP BLE Provisioning / ESP SoftAP Provisioning）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L28（'BLE 传输约需 110KB RAM（基线高置信）'）、L27（Preflight：'能否要求用户装 ESP BLE Provisioning / ESP SoftAP Provisioning 官方 App？'）；provisioning-comparison L12（RAM 行）、L20-21（BLE(GATT) vs SoftAP 取舍：App 直连体验 vs 无蓝牙芯片/S2 路径、手动切热点）。'C3 支持 BLE'：本技能 L26 要求先核对芯片无线能力，交叉确认来自 esp32-variants chip-matrix L13（C3：BLE 有）——包内证据链完整。"
+        },
+        {
+          "assertion": "明确告知 SmartConfig 属 legacy、可靠性弱，新产品不建议用于量产",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L49（选型表：'SmartConfig | legacy……可靠性弱、依赖网络环境，新产品不建议'）；L106（Pitfall 5：'不要给新产品选 SmartConfig 并承诺可靠性——它是存量兼容选项'）；provisioning-comparison §3 L26-28（仅存量兼容时选，且不承诺成功率）。"
+        },
+        {
+          "assertion": "引用配网状态机（未配网→配网中→已配网→凭据失效重配），并要求设计凭据失效后的重配入口",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L57-66（状态机图：UNPROVISIONED → PROVISIONING → PROVISIONED → RE-PROVISION）、L68（必须持久化'是否已配网'）；provisioning-comparison §4 L31-36（触发源：改密/换路由器；'提供\"主动清凭据进配网模式\"的物理入口（长按按键等）'）。"
+        },
+        {
+          "assertion": "提示 NVS 持久化凭据为'运行时核验'项，量产前须真机断电重启验证",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L34（'NVS 持久化凭据：基线标注\"运行时核验\"……必须在真机验证重启后凭据仍在（Validation Gate 3）'）；L96（Gate 3：'断电重启后设备自动重连……必须在目标真机实测通过后才可声称支持'）；L105（Pitfall 4）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-wifi-provision-02",
+      "prompt": "帮我在 ESP32-S3 项目里接 BLE 配网，用官方组件，安全方案按你们推荐来，该怎么一步步做？",
+      "routed_to": ["esp32-wifi-provision"],
+      "expected_skills": ["esp32-wifi-provision"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter：'integrates the network_provisioning component' 与 Determine Task Type 2（'已定方式要实现'）字面命中。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "选择 Unified Provisioning + BLE(GATT) + Security 2（SRP6a + AES-256-GCM，推荐档）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L48（传输 BLE(GATT)；'默认选 2'）、L86；security-scheme.md L11（'Security 2 | SRP6a 认证 + AES-256-GCM 会话加密 | 推荐默认'）、L15（'新产品一律 Security 2'）。S3 有 BLE（无 Classic）：经 esp32-variants chip-matrix L12 交叉确认；本技能 L39/L104 的反例红线（S2 无蓝牙）反向佐证传输层必须先核对芯片。"
+        },
+        {
+          "assertion": "通过 idf.py add-dependency 接入现行组件 network_provisioning，并说明准确包名/版本以 registry 运行时查询为准",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L87（'idf.py add-dependency <network_provisioning 组件名=版本>（准确命名空间与版本以 registry 运行时查询为准，写入 idf_component.yml）'）；L29 Preflight（现行组件 network_provisioning vs 旧 wifi_provisioning）；provisioning-comparison §5 L41-43。"
+        },
+        {
+          "assertion": "实现配网状态机并持久化配网状态，失败回报具体错误码而非静默重试",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L88（Workflow 4：'持久化配网状态……失败必须回报具体错误（错误码透传到 App），不静默重试'）；状态机 L57-68；L107（Pitfall 6：'不要吞掉配网失败错误码'）。"
+        },
+        {
+          "assertion": "验证门禁含：正常配网、错误密码负路径、断电重启自动重连（NVS 运行时核验）、日志无明文凭据",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L94-97 四道 Gate 一一对应：Gate 1 正常路径（连上并在线确认）、Gate 2 故意输错密码回报错误、Gate 3 断电重启自动重连（明示'运行时核验项'）、Gate 4 凭据不以明文出现在串口日志；security-scheme L28-29（错误口令被拒 + 日志抽查）。"
+        },
+        {
+          "assertion": "无真机时标注 Build Verification Only",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L98（Gate 5：'无真机时：所有结论标 Build Verification Only，不得声称\"配网已验证\"'）；security-scheme L31。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-wifi-provision-03",
+      "prompt": "把路由器的 SSID 和密码直接写死在固件里不就不需要配网了吗？我们产品就这么干，最省事。",
+      "routed_to": ["esp32-wifi-provision"],
+      "expected_skills": ["esp32-wifi-provision"],
+      "routing_match": true,
+      "routing_rationale": "frontmatter 红线原文：'production security red lines（不把 SSID/密码写死固件、Production 禁 Security 0）'——该题是技能显式声明的 refuse 场景。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "明确拒绝写死凭据的做法（refusal）：量产镜像带 SSID/密码 = 每台设备共享同一凭据且无法适配用户各自的路由器",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L102（Pitfall 1：'不要把 SSID/密码写死进固件（源码、Kconfig 默认值、测试固件都算）——量产镜像带凭据等于把用户网络卖掉'）；L40（Contracts：'SSID/密码不得写死在固件源码或 sdkconfig 默认值里随镜像分发'）。'共享同一凭据'的安全后果由'把用户网络卖掉'与 security-scheme 红线覆盖；'无法适配用户路由器'为功能性推论，助手可自然补出。"
+        },
+        {
+          "assertion": "指出安全红线：凭据不进源码/Kconfig 默认值/仓库，日志不落明文凭据",
+          "verdict": "PASS",
+          "evidence": "security-scheme.md L21（红线 1：'源码、Kconfig 默认值、sdkconfig.defaults、单元测试 fixture 一律不允许出现真实凭据'）、L23（红线 3：'凭据不落日志……出现明文凭据 = 事故'）、L24（'不进仓库、不进 CI 明文'）；SKILL.md L103（Production 禁 Security 0）；L118（Privacy：示例与日志一律占位符）。"
+        },
+        {
+          "assertion": "给出正确替代：Unified Provisioning（推荐 Security 2）把凭据在运行时安全下发并持久化",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L48（UP 推荐、Security 2 默认）、L57-66 状态机（凭据下发路径）、L86（量产默认 UP + Security 2）；持久化路径 L68 + L34（NVS 标注运行时核验——替代方案陈述时会如实带此限定）。"
+        },
+        {
+          "assertion": "不提供任何'写死凭据'的实现示例",
+          "verdict": "PASS",
+          "evidence": "三份文件（SKILL.md / provisioning-comparison.md / security-scheme.md）通读无任何硬编码凭据示例；security-scheme §3 标题即'红线（违反即拒答/打回）'；SKILL.md L118 Privacy 要求凭据只以占位符出现——技能结构上使该断言必然满足。"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "warn": 2,
+    "fail": 0
+  }
+}

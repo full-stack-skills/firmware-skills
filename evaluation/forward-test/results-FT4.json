@@ -1,0 +1,367 @@
+{
+  "batch": "FT4",
+  "results": [
+    {
+      "id": "fw-emulation-01",
+      "routed_to": "fw-emulation",
+      "expected_skills": ["fw-emulation"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "无板先验镜像走 Workflow A QEMU boot 冒烟：取 armsr/armv8 combined-efi 镜像（官方下载站当版目录或自建 bin/targets/armsr/armv8/），gunzip 解压后 qemu-system-aarch64 -M virt -cpu cortex-a57 -m 512M -nographic -bios QEMU_EFI.fd + virtio-blk 挂镜像；判据=串口 boot log 引导至 shell 提示符且基础命令有响应，log 存档；结论只能写 Boot Verification Only，不等于硬件可用，真机验收路由 fw-hil-testing。并说明 N1 可刷镜像属 remake 链，冒烟证的是'能引导'层。",
+      "assertion_results": [
+        {
+          "assertion": "给出 QEMU boot 冒烟路径：armsr/armv8 combined-efi 镜像 + qemu-system-aarch64 -M virt -cpu cortex-a57 + UEFI 固件（QEMU_EFI.fd）+ virtio-blk + -nographic 串口",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 4 (L60-67) 完整命令含 -M virt -cpu cortex-a57 -m 512M -nographic -bios QEMU_EFI.fd -drive virtio-blk-device；references/qemu-openwrt.md §2 (L17-23) 同款基准流程，§1 (L9) 指明 combined-efi .img.gz"
+        },
+        {
+          "assertion": "镜像来源口径：官方下载站 releases/<版本>/targets/armsr/armv8/ 的 combined-efi（文件名以下载站当版目录为准，不背文件名）或自建产物 bin/targets/armsr/armv8/，并说明 N1 可刷镜像属 remake 链、boot 冒烟证的是'能引导'这一层",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 1 (L57) 两种来源+不背文件名；qemu-openwrt.md L13 明确'N1 等盒子的可刷写镜像不是这份 armsr 直出镜像（那是 remake 链的产物）……boot 冒烟验证的是镜像能引导、用户态活着这一层'；Pitfall 3 (L99) 不背官方镜像文件名"
+        },
+        {
+          "assertion": "冒烟判据：串口 boot log 引导到 OpenWrt shell 提示符、基础命令有响应、log 存档为证据",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 5 (L69)：串口输出 boot log 直到 shell 提示符、执行 uname -a 等基础命令、boot log 存档为证据；qemu-openwrt.md §4 (L38-40) 三条判据一致"
+        },
+        {
+          "assertion": "诚实完成标准：结论只能写 Boot/Build Verification Only，明确说不等于硬件可用，真机验收路由 fw-hil-testing",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8 与 Contract 2 (L38) '模拟通过 = Build/Boot Verification Only'；Workflow A step 6 (L70) 汇报模板+真机问题路由 fw-hil-testing；Validation Gate 1 (L90)；qemu-openwrt.md §4 汇报模板 (L41)"
+        },
+        {
+          "assertion": "环境提醒：macOS 可本地跑 qemu（brew 安装），UEFI 固件路径因平台而异需运行时核验",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Preflight (L20) 'macOS 可 brew 安装'、(L26) 'UEFI 固件……路径因平台而异，运行时核验'；qemu-openwrt.md §7 末行 'macOS: brew install qemu'、§2 (L25) 'QEMU_EFI.fd……发行包/brew 名各异，运行时核验本机路径'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-emulation-02",
+      "routed_to": "fw-emulation",
+      "expected_skills": ["fw-emulation", "fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "refusal 立场：不一致。QEMU 只模拟 CPU/内存/块设备等体系结构层（virtio 网卡/块设备是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐均不被真实模拟；覆盖边界表对 Wi-Fi/eth 吞吐/eMMC/DTB 引脚一律答'不一致'并路由 fw-hil-testing。模拟通过 = Build/Boot Verification Only，不能据此'不买板子'；外设行为、吞吐、长跑、功耗列给 HIL 真机验收。ESP32 侧 QEMU 支持有限，标 Pending verification，不做外设级仿真承诺。",
+      "assertion_results": [
+        {
+          "assertion": "明确回答不一致：QEMU 只模拟 CPU/内存/块设备/体系结构层设备（virtio 网卡是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐都不被真实模拟",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Contract 3 (L39)：'QEMU 模拟的是 CPU/内存/块设备等体系结构层；无线、以太网 PHY/交换、射频、时序、eMMC 不被真实模拟'；qemu-openwrt.md §5 表 (L48-49)：Wi-Fi 否、'以太网 PHY/交换芯片行为与吞吐 否（virtio 网卡仅是体系结构层模型）'"
+        },
+        {
+          "assertion": "纠正'不买板子'的结论：模拟通过 = Build/Boot Verification Only，逻辑/引导层证据不能替代外设级真机证据",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8 与 Contract 2 (L38)；Determine Task Type #3 (L14) refusal 立场'不一致；外设级问题路由 fw-hil-testing'；references/host-mocking.md §4 (L43, L46) L1 层=Build/Boot Verification Only、跨层宣称拒绝"
+        },
+        {
+          "assertion": "覆盖边界表口径：能证'引导+用户态活着'；Wi-Fi/eth 吞吐/eMMC/DTB 引脚行为一律'不一致'拒绝作答",
+          "verdict": "PASS",
+          "evidence": "qemu-openwrt.md §5 覆盖边界表 (L45-51)：'能否引导、用户态起得来=是/Boot Verification Only'；无线、以太网吞吐、eMMC 时序、DTB/引脚行为四行全部'否→不一致→HIL'；SKILL.md Pitfall 2 (L98) 同口径"
+        },
+        {
+          "assertion": "路由 fw-hil-testing：外设行为、吞吐、长跑、功耗等硬件在环验收项列给 HIL",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Determine #3 (L14) 与 hand-off 表 (L51) 'QEMU 冒烟通过后的真机验收（Wi-Fi/eth/eMMC/长跑）→ fw-hil-testing'；Contract 4 (L40) 真机行为验收路由 fw-hil-testing"
+        },
+        {
+          "assertion": "ESP32 侧同样诚实：QEMU 支持有限标 Pending verification，不做外设级仿真承诺",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Offline Baseline (L32) 'ESP32 的 QEMU 仿真能力本包未验证：一律标 Pending verification'；Contract 4 (L40)；Pitfall 5 (L101)；qemu-openwrt.md §6 (L55)"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-emulation-03",
+      "routed_to": "fw-emulation",
+      "expected_skills": ["fw-emulation"],
+      "routing_match": true,
+      "verdict": "warn",
+      "answer": "宿主级 env-var fixture 注入模式：被测脚本留根路径环境变量覆盖（<PROJECT>_<域>_ROOT 前缀，如 TINYNAS_SYSINFO_ROOT/TINYNAS_SHARE_ROOT，仅作模式引用），有值读 fixture 目录、无值走生产默认路径；测试骨架注入假数据源，golden 期望值独立生成（注明日期+算法）、格式+精确断言并用、必配负向用例（路径穿越必须被拒）；静态门禁并列同一入口（sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/）全绿退出 0；真实例参考实测项目 tests/run-lint.sh + test-machine-id.sh。证据分层：宿主单测=Host Test Only；ESP32 逻辑层走 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing。",
+      "assertion_results": [
+        {
+          "assertion": "给出宿主级 env-var fixture 注入模式：被测脚本支持根路径环境变量覆盖（TINYNAS_SYSINFO_ROOT / TINYNAS_SHARE_ROOT 这类前缀变量仅作模式引用），变量有值读 fixture 目录、无值走生产默认路径",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B (L77) 模式即 TINYNAS_SYSINFO_ROOT/TINYNAS_SHARE_ROOT 一类前缀变量、仅作模式引用；host-mocking.md §1 (L7) '变量有值→从该目录读；无值→默认真实路径（生产行为不变，注入只发生在测试）'"
+        },
+        {
+          "assertion": "真实例指引：tinynas-files/tests/（run-lint.sh 静态门禁 + test-machine-id.sh fixture 注入行为测试）作为已验证模式参考，不复制项目专属产物",
+          "verdict": "WARN",
+          "evidence": "host-mocking.md §1 (L9) 与 SKILL.md (L77) 确实指向 run-lint.sh+test-machine-id.sh 并声明'仅作模式溯源，不构成通用包产物'，满足'已验证模式参考、不复制专属产物'；但真实例路径被匿名化为 <PROJECT-overlay>/tests/，全文未出现 tinynas-files 目录名——场景预期的可定位真实例指引只到脚本名层面，溯源到具体仓库需外部知识，判 WARN"
+        },
+        {
+          "assertion": "断言纪律：golden 期望值独立生成（注明日期+算法）、格式断言+精确断言并用、必配负向用例（路径穿越必须被拒）",
+          "verdict": "PASS",
+          "evidence": "host-mocking.md §2 要点 1-3 (L26-28)：golden 独立生成注明日期与算法、负向用例必配（path=/../etc 必须得到 forbidden 类拒绝）、格式断言+精确断言并用；SKILL.md Contract 5 (L41)、Workflow B step 2 (L78)、Validation Gate 2 (L91)"
+        },
+        {
+          "assertion": "静态门禁并列：sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/，一个入口全绿退出 0",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B step 3 (L79) 三项军规逐字命中；host-mocking.md §2 要点 4 (L29) 补 CGI 禁 eval、无私钥入库，'一个入口全绿退出 0（模式见真实例 run-lint.sh）'"
+        },
+        {
+          "assertion": "证据分层汇报：宿主单测 = Host Test Only，不越级宣称镜像/硬件可用；ESP32 逻辑层用 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing",
+          "verdict": "PASS",
+          "evidence": "host-mocking.md §4 表 (L42, L46) L0=Host Test Only、跨层宣称拒绝；§3 (L34-36) HAL 抽象自 mock、mock 组件在 components.espressif.com 以 'mock' 检索且存在性与维护状态运行时核验；SKILL.md Workflow B ESP32 段 (L84-86) '宿主测试全绿仍只证逻辑；上板行为 → fw-hil-testing'"
+        }
+      ],
+      "issues": [
+        "fw-emulation-03/断言2：真实例仅以 <PROJECT-overlay>/tests/ 匿名占位（host-mocking.md L9），未给出 tinynas-files 具体仓库名；脚本名与'仅作模式引用'纪律在位，但场景要求的可定位真实例溯源弱化，建议在 reference 中补一处显式来源注记（如 '实例取自实测项目 tinynas-files'）而不破坏通用包边界"
+      ]
+    },
+    {
+      "id": "fw-hil-testing-01",
+      "routed_to": "fw-hil-testing",
+      "expected_skills": ["fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "build 绿只是 B0 Build Verification Only。三级徽章 B0→Boot Verified (QEMU)→HIL Verified，禁止越级声明。发货前须落验收矩阵：每行六列（验收项/前置条件/操作/观察手段/预期/证据形式）逐行取证，必选覆盖上电启动、核心功能、异常路径（断电/断网/异常输入）、≥24h soak 长时间运行、升级路径五类；每份证据带设备标识+固件版本+日期并落文件。矩阵全行真机证据齐→HIL Verified，随后证据包转 fw-release-gate 过发布门禁。",
+      "assertion_results": [
+        {
+          "assertion": "指出 build 绿只是 Build Verification Only（B0），给出三级徽章判定 Build Verification Only → Boot Verified (QEMU) → HIL Verified，禁止越级声明",
+          "verdict": "PASS",
+          "evidence": "SKILL.md 分级完成标准表 (L79-83) 三级徽章与允许声明上限，L85 '没拿到哪级就只能声明到哪级'；references/completion-badges.md §1 (L9-11) B0/B1/B2 定义、§2 越级禁令表 (L17-22)"
+        },
+        {
+          "assertion": "给出验收矩阵模板：每行 = 验收项/前置条件/操作/观察手段/预期/证据形式，要求逐行取证",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Evidence Contract 六列表 (L56-63)；references/evidence-matrix.md §1 六列模板 (L7-10) 含实例行（断电 10 次均自动恢复）；SKILL.md L54 '一切已验证/可发货的断言必须挂在验收矩阵上'"
+        },
+        {
+          "assertion": "矩阵必选覆盖五类行：上电启动、核心功能、异常路径（断电/断网/异常输入）、长时间运行（≥24h soak）、升级路径",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L65-71 '必选覆盖五类行，缺一类不算矩阵完整'，五类逐一列出且 soak 标 ≥24h 起步；evidence-matrix.md §2 网关型实例行集五类对齐"
+        },
+        {
+          "assertion": "证据纪律：截图/日志/测量值至少其一落文件，每份带设备标识+固件版本+日期",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L63 证据形式列'截图|日志|测量值——至少其一，落文件'；L73 证据纪律'每份证据带设备标识+固件版本+日期……禁止补拍、代拍、跨设备挪用'；evidence-matrix.md §5 (L49-50) 归档命名与三要素"
+        },
+        {
+          "assertion": "证据齐、打上 HIL Verified 后转 fw-release-gate 过发布门禁（sha256、命名、发布说明等）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md hand-off 表 (L98) '证据齐 → 发布与命名校验 → fw-release-gate'；completion-badges.md §3 (L28) 'B2 + 证据包是 fw-release-gate 发布门禁的徽章前置；渠道版徽章 < B2 时只能进内部/测试渠道并显式标注'；evidence-matrix.md §5 (L52)"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-hil-testing-02",
+      "routed_to": "fw-hil-testing",
+      "expected_skills": ["fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "拒绝直接发货：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级（refusal）。QEMU 覆盖不了真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化。补齐路径 = 跑最小真机矩阵（上电/核心功能/断电/soak/升级五类行）取得 B2 证据后再回发布门禁。QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档；若进内部/测试渠道须显式标注非 HIL 级。",
+      "assertion_results": [
+        {
+          "assertion": "拒绝直接发货（refusal）：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Pitfall 1 (L145) '不要把 Boot Verified (QEMU) 说成已验证可发货……徽章不可越级'；completion-badges.md §2 越级话术表首行 (L19) 'QEMU 都过了，直接发货 → B1 ≠ B2……合规说法：B1 已达成；真机矩阵未跑，暂不可发货'"
+        },
+        {
+          "assertion": "说明 QEMU 覆盖不了的证据类型：真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化",
+          "verdict": "PASS",
+          "evidence": "completion-badges.md §2 (L19) 'QEMU 无真实电气、存储介质、断电、无线环境与长时老化'；SKILL.md Pitfall 1 (L145) 同口径列举"
+        },
+        {
+          "assertion": "给出补齐路径：跑最小真机矩阵（上电/核心功能/断电/soak/升级）取得 B2 证据后再回发布门禁",
+          "verdict": "PASS",
+          "evidence": "SKILL.md 必选五类行 (L65-71) + Workflow A (L111-117) 网关矩阵逐行执行取证；B2 取得条件=验收矩阵全行真机证据齐 (L83)；completion-badges.md §3 (L27) 'B1 → B2 走 fw-hil-testing（真机矩阵）'，(L28) B2 证据包是发布门禁前置"
+        },
+        {
+          "assertion": "QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档，若进内部/测试渠道须显式标注非 HIL 级",
+          "verdict": "PASS",
+          "evidence": "completion-badges.md §1 (L10) B1 徽章定义与证据要求（模拟器启动日志+冒烟记录标明 QEMU）；§3 (L28) '渠道版徽章 < B2 时只能进内部/测试渠道并显式标注'；SKILL.md L85 没拿到哪级就声明到哪级"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-hil-testing-03",
+      "routed_to": "fw-hil-testing",
+      "expected_skills": ["fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "先定类再动手（构建/烧录/功能三分类），不在硬件上反复盲刷。'串口无输出'排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区/介质对？）→ 换已知良好镜像验证板是否响应。Pre-Flash 红线：bootloader/出厂校准/NVS 不碰；烧前须留存回退镜像，排障期间每次重烧前确认回退镜像仍在、校验和未变。路由：板能响属镜像问题→构建侧 fw-emulation 分离'镜像坏 vs 板问题'；有输出但崩溃/复位→esp32-debug；OpenWrt 盒子完全无响应→openwrt-serial-recovery。",
+      "assertion_results": [
+        {
+          "assertion": "先定类再动手：构建失败/烧录失败/功能失败三分类，不在硬件上反复盲刷",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow C step 1 (L128) '先定类再动手（构建/烧录/功能三分类），不在硬件上反复盲刷'；失败三分类路由表 (L101-107)"
+        },
+        {
+          "assertion": "排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区对？）→ 换已知良好镜像验证板是否响应",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow C step 2 (L129-133) 三层排查顺序逐项命中：观察链路（波特率 115200 常见值以板实测、TX/RX 交叉、共地、供电、端口选对没）、烧录证据（写入成功？写到对的分区/介质？）、最小引导（换已知良好镜像验证板能响）"
+        },
+        {
+          "assertion": "提醒 Pre-Flash 红线：bootloader/校准区/NVS 不碰；若烧前未留存回退镜像，后续每步风险升级",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Pre-Flash Checks #2 (L32) 'bootloader / 出厂校准 / NVS 默认不碰'、#3 (L33) '可回退固件必须先留存'；Workflow C step 3 (L134) '排障期间不擦红线分区；每次重烧前确认回退镜像仍在、校验和未变'；Pitfall 2 (L146) 第一次烧录就要想好怎么退回来"
+        },
+        {
+          "assertion": "路由正确：板能响属镜像问题转构建侧（fw-emulation 分离镜像 vs 板），有输出但崩溃/复位转 esp32-debug，盒子类完全无响应转 openwrt-serial-recovery",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow C step 2 末条 (L133) 'OpenWrt 盒子完全无响应 → openwrt-serial-recovery；有输出但崩溃 → esp32-debug'；失败三分类表 (L105) 'fw-emulation 无板复现，分离镜像坏 vs 板问题'"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-hil-testing-04",
+      "routed_to": "fw-hil-testing",
+      "expected_skills": ["fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "按网关型矩阵（Workflow A）逐行验收：上电到可用（冷启动到 Web 可用连续 10 次计时）、存储挂载、核心服务、Web 后台；异常路径必须真做——断电 N 次循环（如定时插座 60s×10）、拔 WAN 断网降级、满盘/畸形配置异常输入；长时间运行 ≥24h soak 起步，采样内存/温度/服务存活/重启计数；升级路径做升级成功+升级中断电回退并演练回退镜像/ddbr 恢复。Pre-Flash：烧前 ddbr 备份当前可用固件，bootloader/校准区不碰。单台全绿只是 G1 工程样机级门票，批量按 G1→G2→G3→G4 商业门禁逐级放行，激活率/启动率/退款率类指标在 G2 小批量阶段观察。",
+      "assertion_results": [
+        {
+          "assertion": "按网关型矩阵实例化：上电到可用、存储挂载、核心服务、Web 后台逐行验收",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 2 (L114) '实例化网关型矩阵：上电到可用、存储挂载、核心服务、Web 后台、断电恢复循环、断网降级、soak、升级/回退'；evidence-matrix.md §2 (L14-20) 实例行集"
+        },
+        {
+          "assertion": "异常路径必须真做：断电循环（如 10 次拔电）、断网降级、异常输入（满盘/畸形配置）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 4 (L116) '断电用定时插座或拔电做 N 次循环；断网拔 WAN 看 LAN 侧服务存活；异常输入喂满盘、畸形配置'；evidence-matrix.md §1 例行'定时插座断电 60s×10 次' (L10)、§2 异常路径行 (L18)"
+        },
+        {
+          "assertion": "长时间运行：≥24h soak 起步，采样内存/温度/服务存活/重启计数",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L70 '长时间运行：soak 采样 ≥24h 起步（内存、温度、服务存活、重启计数）'；evidence-matrix.md §2 长时间运行行 (L19) 同四项采样指标"
+        },
+        {
+          "assertion": "升级路径：升级成功+升级中断电回退，并演练回退镜像/ddbr 恢复",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L71 升级路径'升级成功 + 升级中断/回滚'；evidence-matrix.md §2 (L20) '升级成功；升级中断电回退；回退镜像恢复演练'；Pre-Flash #3 (L33) 'OpenWrt 盒子走 ddbr 备份'；Validation Gates 回退演练 (L140) '至少成功执行一次从留存镜像恢复'"
+        },
+        {
+          "assertion": "Pre-Flash：烧前留存当前可用固件备份（ddbr），bootloader/校准区不碰",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Pre-Flash Checks #2 (L32) 分区红线、#3 (L33) ddbr 备份+回退三问（文件在哪/校验和/怎么刷回）；Workflow A step 1 (L113) '过 Pre-Flash Checks（ddbr / 镜像备份先行）'"
+        },
+        {
+          "assertion": "单台全绿只是 G1 工程样机级，批量按 G1→G2→G3→G4 商业门禁逐级放行（激活率/启动率/退款率类指标在小批量阶段观察）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md 商业门禁模式 (L109) '单台矩阵全绿只是 G1 工程样机级门票；……G2 单渠道小批量受控观察（激活率/启动率/退款率类指标）→ G3 多渠道扩量对比 → G4 售后指标门禁逐级放行，禁止越级'；evidence-matrix.md §4 (L34-45) G1-G4 表（G2=5 台×观察 14 天、三类指标达线）"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-toolchain-01",
+      "routed_to": "fw-toolchain",
+      "expected_skills": ["fw-toolchain"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot。宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式。基准模式：容器内 rustup target add aarch64-unknown-linux-musl + apt 安装 gcc-aarch64-linux-gnu 作链接器（模式经 TinyNAS 实测项目验证，仅作模式引用），target 与工具链锁进 rust-toolchain.toml 入库；纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）。产物实证：file 应为 ELF 64-bit ARM aarch64 … statically linked；三版本轴分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing。",
+      "assertion_results": [
+        {
+          "assertion": "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot（防头文件/libc/链接器版本错配）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8 开篇核心立场逐字命中；Contract 2 (L43) '禁止手工拼 sysroot……头文件/libc/链接器与目标环境不匹配'；hosting-matrix.md §2 'sysroot 手拼三宗罪' (L17)"
+        },
+        {
+          "assertion": "宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式（与官方 IB 的 macOS 用法口径一致）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 1 (L62) '模式以 Linux 宿主为基准……macOS/Windows 不要在宿主上硬凑——进 Docker/Linux 容器执行同一模式（与 IB 的 macOS 用法一致）'；hosting-matrix.md §3 (L22-23)；Pitfall 5 (L104)"
+        },
+        {
+          "assertion": "给出基准模式：容器内 rustup target add aarch64-unknown-linux-musl + 发行版安装宿主交叉 gcc（如 apt 安装 gcc-aarch64-linux-gnu）作链接器（注明该模式经实测项目 TinyNAS 实例验证，仅作模式引用）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 2-3 (L63-64)：apt-get install gcc-aarch64-linux-gnu + rustup target add aarch64-unknown-linux-musl，并注明'模式已在实测项目验证：TinyNAS 实例……仅作模式引用'；hosting-matrix.md §1 第一行与 §4 模式引用节"
+        },
+        {
+          "assertion": "版本锚定：target 与工具链锁进 rust-toolchain.toml 并入库；提醒纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 3-4 (L64-65)：锁进 rust-toolchain.toml；'纯 Rust 依赖走 musl self-contained 链接通常即可；一旦引入 C 依赖，需要与目标 libc 匹配的交叉工具链，链接配置以实测为准（运行时核验）'；version-pinning.md §2 Rust/musl 链 (L30-31)"
+        },
+        {
+          "assertion": "产物实证：file 输出应为 ELF 64-bit aarch64 且 statically linked；三版本轴（本机/项目锁定/上游 latest）分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A step 5 (L68-71) file 期望 'ELF 64-bit ARM aarch64 ... statically linked'；Preflight 三版本轴表 (L26-32)；Validation Gates 1-2 (L92-93) 书面记录与逐字留档；step 6 (L73) 与 hand-off 表 (L56-57) 双路由"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-toolchain-02",
+      "routed_to": "fw-toolchain",
+      "expected_skills": ["fw-toolchain", "esp32-idf"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "纠正，不照做：ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套；apt/brew 手装版本不受管控属版本漂移。正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）。工程侧安装/激活/CI 环境细节移交 esp32-idf，本技能不复述其步骤。重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要。可复现性：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追 latest。",
+      "assertion_results": [
+        {
+          "assertion": "handoff 纠正：不照做——ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套，apt/brew 手装版本不受管控属版本漂移",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B (L77-79) '纠正，不照做……随 IDF 发行包……版本与 IDF 严格配套……手动 apt/brew 安装的版本不受 IDF 管控，属版本漂移'；Contract 3 (L44)；hosting-matrix.md §1 ESP32 行 (L11)"
+        },
+        {
+          "assertion": "正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B step 2 (L80) '确认 idf.py --version 与项目锁定 IDF 一致，重新走 IDF 的安装/激活流程'；step 1 (L79) '每个终端经 IDF 的激活脚本（export 一族）进入环境'"
+        },
+        {
+          "assertion": "工程侧安装/激活/CI 环境细节路由 esp32-idf，不在此复述其步骤",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B step 3 (L81) '工程侧（安装流程、激活、CI 环境）细节移交 esp32-idf，本 Skill 不复述其步骤'；Determine Task Type #2 (L13)；hand-off 表 (L54)"
+        },
+        {
+          "assertion": "重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Contract 2 (L43) '缺依赖应回到托管者'、Contract 3 (L44) '禁止绕过 IDF 手动安装 ESP 工具链'；Pitfalls 1-2 (L100-101)；hosting-matrix.md §2 '托管者还负责更新……不走再拷一份新的进来' (L18)"
+        },
+        {
+          "assertion": "构建可复现性提醒：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追工具链 latest",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Contract 4 (L45) 'IDF=dependencies.lock + 固定 IDF 检出版本'；version-pinning.md §2 ESP-IDF 链 (L20) '可复现构建 = 固定 IDF 检出 + 提交 dependencies.lock'；三版本轴纪律 (version-pinning.md §1 L13 上游 latest 不自动采用；SKILL.md Pitfall 3)"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-toolchain-03",
+      "routed_to": "fw-toolchain",
+      "expected_skills": ["fw-toolchain"],
+      "routing_match": true,
+      "verdict": "pass",
+      "answer": "按三版本轴对表排查定位漂移：本机轴（Preflight 实测命令）/ 项目锁定轴（仓库锚定文件，唯一构建依据）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'，不自动采用）。各链锚定：IDF 链提交 dependencies.lock + 固定 IDF 检出（tag/commit），managed_components 勿手改，IDF_VERSION 类约定以项目仓库实际为准（运行时核验）；OpenWrt 链固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存；Rust/musl 链 rust-toolchain.toml 入库 + 固定 target。修复方向永远是对齐项目锁定轴，不是集体升 latest。验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate。",
+      "assertion_results": [
+        {
+          "assertion": "三版本轴对表排查：本机轴（实测命令）/ 项目锁定轴（仓库锚定文件）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'），先定位漂在哪根轴",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Preflight 三版本轴表 (L26-32) 三轴定义与确认方式；Workflow C step 1 (L85) '按三版本轴逐轴实测……定位哪根轴漂了'；version-pinning.md §1 (L5-13) '排障第一步永远是三轴对表'，latest 轴引用必须带截至 2026-09-02"
+        },
+        {
+          "assertion": "IDF 链锚定：提交 dependencies.lock + 固定 IDF 检出版本（tag/commit），managed_components 勿手改；IDF_VERSION 类锚定文件以项目仓库实际为准（运行时核验）",
+          "verdict": "PASS",
+          "evidence": "version-pinning.md §2 ESP-IDF 链 (L19-21) 三要素逐项命中，含 'IDF_VERSION 之类的锚定文件/变量约定……以项目仓库实际文件为准——运行时核验，不要假设通用存在'"
+        },
+        {
+          "assertion": "OpenWrt 链锚定：固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存，不追 latest",
+          "verdict": "PASS",
+          "evidence": "version-pinning.md §2 OpenWrt 链 (L25-26) '版本 pin 到具体号（基线 25.12.5，走读 2026-09-02）……按版本目录缓存复用' + SOURCE_DATE_EPOCH；SKILL.md Pitfall 4 (L103) '不要用不带版本 pin 的 IB 目录'"
+        },
+        {
+          "assertion": "Rust/musl 链锚定：rust-toolchain.toml 入库 + 固定 target；修复方向是对齐项目锁定轴而不是集体升 latest",
+          "verdict": "PASS",
+          "evidence": "version-pinning.md §2 Rust/musl 链 (L30-31) 'rust-toolchain.toml 钉 channel 与组件，随仓库提交……固定 target'；SKILL.md Workflow C step 3 (L87) '修复方向永远是对齐到项目锁定轴，不是大家升到 latest'"
+        },
+        {
+          "assertion": "可复现性验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Validation Gate 4 (L95) '团队两台机器按锁定文件构建出 sha256 一致的产物（可复现性抽检）'、Gate 2 (L93) file 输出逐字留档；Workflow C step 4 (L88) '产物发布校验 → fw-release-gate'；version-pinning.md §4 纪律 4 (L56)"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 9,
+    "warn": 1,
+    "fail": 0
+  }
+}

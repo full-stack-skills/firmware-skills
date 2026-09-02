@@ -64,3 +64,7 @@
 - conf 中**没有** s905h 专属行（`grep -i s905h` 无结果，走读 2026-09-02）。
 - 存在通用 SOC=s905 行：conf L207 BOARD=`s905`（meson-gxbb 家族，FDTFILE=`meson-gxbb-p201.dtb`，BUILD=yes）——需要用 s905 世代盒子时以此为入口。
 - S905-H 世代盒子社区普遍反馈 eMMC 写入受限、仅 U 盘启动可用；上游文档只保证"USB 启动优先于 eMMC"（documents/README.cn.md L671）。具体某台设备能否写 eMMC，以运行时核验（TTL 观察/短接/写入测试）为准，**不要替用户断言**。
+
+## 排错补充：BOARD 查无匹配
+
+`-b <board>` 在 `model_database.conf` 查无匹配行时，`remake` 的 `confirm_version`（上游 L687-692）报 `The [ x ] configuration not found!` 并退出——先核对拼写（N1 用 `s905d`，不是 `n1`），再查板型库。

@@ -1,0 +1,356 @@
+{
+  "batch": "FT5",
+  "executor": "FT-5",
+  "date": "2026-09-03",
+  "method": "manifest-only routing (20x SKILL.md frontmatter, first 12 lines) -> read routed SKILL.md + references -> answer per guidance -> judge assertions with file/line evidence",
+  "results": [
+    {
+      "id": "esp32-freertos-01",
+      "routed_to": "esp32-freertos",
+      "expected_skills": ["esp32-freertos"],
+      "routing_match": true,
+      "routing_rationale": "清单命中：esp32-freertos description 显式列出 'stack sizing in BYTES'、'stack-overflow/watchdog triage'、触发词 xTaskCreate/栈溢出/任务优先级；随机重启的崩溃取证由其边界移交 esp32-debug。",
+      "answer_summary": "按 Workflow 2 作答：先 Preflight（idf.py --version、grep sdkconfig、改前先复现）；指出 IDF FreeRTOS 栈参数单位是字节，1024=1KB（与上游'字'差 4 倍）；拒绝拍脑袋给安全值——栈大小是项目决策，给保守值+打印高水位验证+逐步收紧；排障按 复现记录→字节换算→优先级/时间片→一次只改一个维度；若现场需要 backtrace/coredump 取证，显式移交 esp32-debug。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "指出 IDF FreeRTOS 的栈参数单位是字节（1024=1KB），与上游 FreeRTOS 的'字'不同（基线高置信差异点）",
+          "verdict": "PASS",
+          "evidence": "skills/esp32-freertos/SKILL.md L62 '栈单位是字节（IDF FreeRTOS 与上游\"字\"不同，基线高置信）——审代码时先换算：4096 = 4KB，不是 1024 字'；同义强化 L8、Pitfalls L82（'差 4 倍'）；description L3 'stack sizing in BYTES (not words like upstream FreeRTOS)'；references/smp-pinning.md L24。"
+        },
+        {
+          "assertion": "拒绝拍脑袋给'安全数值'：栈大小是项目决策，给保守值+高水位实测+逐步收紧的验证方法",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L63 '新任务先用保守栈值 + 打印高水位验证，再逐步收紧；不要拍脑袋定\"2048 就够\"'；Contracts L39 '栈大小、优先级、队列长度是项目决策…禁止建议时编造\"推荐值\"却声称是官方值'；Validation Gates L78 '栈高水位在压测后仍有余量'。"
+        },
+        {
+          "assertion": "排障顺序：复现记录→字节换算检查→优先级/忙等检查→一次只改一个维度",
+          "verdict": "PASS",
+          "evidence": "Preflight L28 '记录现存任务的栈参数与绑核情况，改动前先复现问题'；Workflow 2 L62（字节换算）、L65（优先级继承/同优先级时间片）；Contracts L40 '每次只改一个维度（栈 OR 优先级 OR 绑核），改前留复现手段'。"
+        },
+        {
+          "assertion": "崩溃现场取证（backtrace/coredump）显式移交 esp32-debug（handoff），不在本技能内假装能定位崩溃原因",
+          "verdict": "PASS",
+          "evidence": "Determine Task Type L15 '崩溃现场（panic/backtrace/coredump）→ 移交 esp32-debug'；Workflow 2 L66 '疑似栈溢出的现场取证（backtrace/coredump）移交 esp32-debug'；Hand-off 表 L48。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-freertos-02",
+      "routed_to": "esp32-freertos",
+      "expected_skills": ["esp32-freertos"],
+      "routing_match": true,
+      "routing_rationale": "清单命中：'mutex patterns'、'portMUX critical sections'、触发词 互斥/双核/PRO_CPU。",
+      "answer_summary": "明确指出同事方案不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核（基线明确，高频误用点）。正确方案：任务间互斥用互斥量（带优先级继承）；极短临界区用 portMUX 自旋锁（持锁期间本核中断被屏蔽，临界区必须极短、绝不阻塞）。不编造推荐栈/优先级数值；优先级引用带'默认 25，可配，以本项目 sdkconfig 为准'。建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "明确指出不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核，不能当互斥用（基线明确）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow 1 L56 '不要用 vTaskSuspendAll 当互斥——它只挂起当前核的调度（基线明确）'；Pitfalls L84 '双核下它只挂起当前核，锁不住另一个核'；references/smp-pinning.md L26 '只挂起当前核的调度器——双核下不能当互斥用（高频误用点）'。"
+        },
+        {
+          "assertion": "给正确方案：任务间互斥用互斥量（优先级继承），极短临界区用 portMUX 自旋锁（持锁不阻塞）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L56 '互斥用互斥量（考虑优先级继承）'；smp-pinning.md L25 '临界区用 portMUX 自旋锁——持锁期间本核中断被屏蔽，所以临界区必须极短、绝不阻塞'。"
+        },
+        {
+          "assertion": "不编造'推荐栈/优先级'官方数值；优先级引用时带'默认 25，可配，以本项目 sdkconfig 为准'",
+          "verdict": "PASS",
+          "evidence": "Contracts L39；Preflight L27 '不要按 25 回答，按 sdkconfig 回答'；Workflow 2 L64 '有效范围 0 到 CONFIG_FREERTOS_MAX_PRIORITIES-1（默认 25 → 0–24…）；以本项目 sdkconfig 为准'；Pitfalls L83。"
+        },
+        {
+          "assertion": "建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状",
+          "verdict": "PASS",
+          "evidence": "Preflight L22 'grep -E \"CONFIG_FREERTOS_(UNICORE|MAX_PRIORITIES)\" sdkconfig'；L26 确认单/双核运行。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-freertos-03",
+      "routed_to": "esp32-freertos",
+      "expected_skills": ["esp32-freertos"],
+      "routing_match": true,
+      "routing_rationale": "清单命中：'xTaskCreatePinnedToCore and SMP dual-core pinning on ESP32/S3/P4/H4 (PRO_CPU/APP_CPU)'、触发词 双核/绑核。",
+      "answer_summary": "先说明核语义（S3 为 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务）；再读 smp-pinning 决策树：无明确理由不绑核是默认起点，绑核要有目的（隔离抖动→重任务绑 APP_CPU；ISR 归属→任务与 ISR 同核）；不凭印象断言某协议栈固定跑哪个核，要求运行时实测每核负载/idle 占用；改绑核后跑长稳压测（覆盖最坏业务路径），无硬件证据标注 Build Verification Only 或 Pending HIL。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "先说明核语义：S3 是 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务（基线高置信）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Offline Baseline L33 'SMP 双核目标：ESP32、ESP32-S3…（Core 0=PRO_CPU / Core 1=APP_CPU）'；smp-pinning.md L12（S3 行）、L22 '每核独立调度器与 idle 任务'。"
+        },
+        {
+          "assertion": "读 smp-pinning 决策树：无明确理由不绑核是默认起点；绑核要有目的（隔离抖动/ISR 归属）",
+          "verdict": "PASS",
+          "evidence": "smp-pinning.md L31-37 绑核决策树 '没有明确理由 → 不绑核（默认），先测基线'、'隔离抖动…重任务绑 APP_CPU'、'外设 ISR/驱动归属某核 → 相关任务与 ISR 同核'；SKILL.md Workflow 3 L71 同旨。"
+        },
+        {
+          "assertion": "不凭印象断言'某协议栈固定跑哪个核'，要求实测负载分布",
+          "verdict": "PASS",
+          "evidence": "smp-pinning.md L27 '绑 Core 0 前先确认系统负载现状（运行时实测，勿凭印象断言某协议栈固定跑哪核）'；反幻觉 L47 '某外设驱动固定在 PRO_CPU 运行之类的断言基线未抓取——以实测与官方文档为准'。"
+        },
+        {
+          "assertion": "改绑核后要求长稳压测验证，无硬件证据标注 Build Verification Only",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L72 '改绑核后实测：不要只看\"能跑\"…（无硬件证据标注 Build Verification Only）'；smp-pinning.md L41-43 '改绑核前后各跑一轮长稳压测…无硬件时标注 Build Verification Only 或 Pending HIL'；Validation Gates L77。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-idf-01",
+      "routed_to": "esp32-idf",
+      "expected_skills": ["esp32-idf"],
+      "routing_match": true,
+      "routing_rationale": "清单命中：esp32-idf description 'v5→v6 migration of removed legacy drivers and esp-mqtt'、'build/flash troubleshooting'、触发词 'v5 工程升级 v6 编译报错'。",
+      "answer_summary": "按 Workflow B：先 idf.py --version 实测本机大版本，并区分三个版本轴（本机 IDF / 项目锁定 tag+dependencies.lock / 官方 latest stable）。定位根因：v6.0 移除大量 legacy 驱动（基线点名 ADC、I2S、Timer 等）→ 头文件找不到；v6.1 将 esp-mqtt 移入组件管理器 → idf.py add-dependency espressif/mqtt。不凭记忆背'被移除 API 完整清单'，给官方 Migration Guides + 本机 components/ 源码树核验路径。迁移步骤确定性：存全量报错（tee v6-build.log）→ 逐类归因 → 逐类修复 → 每修一类单独重验提交。版本号引用一律带'截至 2026-09-02'。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "先运行时核验：idf.py --version 确认本机大版本，并指出项目锁定版本与本机版本需区分（三版本区分）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Preflight L23 'idf.py --version # 本机 IDF 实际版本'；L30-36 三版本轴表（本机 IDF / 项目锁定 $IDF_PATH+dependencies.lock / 官方 latest stable）。"
+        },
+        {
+          "assertion": "定位到 v5→v6 破坏性变更：v6.0 移除 legacy 驱动（ADC/I2S/Timer 等）、v6.1 将 esp-mqtt 移入组件管理器（idf.py add-dependency espressif/mqtt）",
+          "verdict": "PASS",
+          "evidence": "references/v5-to-v6-migration.md L14 'v6.0 移除大量旧版（legacy）驱动——基线明确点名 ADC、I2S、Timer 等'；L17 'v6.1 将 esp-mqtt 移入组件管理器…idf.py add-dependency espressif/mqtt'；SKILL.md Workflow B L90 按报错定位两类症状。"
+        },
+        {
+          "assertion": "不凭记忆断言完整的被移除 API 清单，给出官方 Migration Guides + 本机构建日志的核验路径",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L91 '禁止凭记忆背\"被移除 API 的完整清单\"'；migration.md L39 UNVERIFIED 表 '官方 Migration Guides + 本机 components/ 目录实查'；L48 Pitfall 3。"
+        },
+        {
+          "assertion": "给出确定性迁移步骤：存全量报错→逐类归因→逐类修复→每类单独重验提交",
+          "verdict": "PASS",
+          "evidence": "migration.md L22-28 迁移流程代码块（tee 全量 log → 逐类归因 → 逐类修复 → 每修一类重验）；L30 '每类错误单独提交，出问题可回退'；SKILL.md L92 同旨。"
+        },
+        {
+          "assertion": "引用版本号（如 v6.1）时带'截至 2026-09-02'的日期化基线口径",
+          "verdict": "PASS",
+          "evidence": "migration.md L6-8 '版本背景（引用必带日期）…截至 2026-09-02：最新 stable v6.1（2026-08-27 发布）'；SKILL.md L39、L115 Pitfall 6 '所有\"最新版本\"必须带\"截至 2026-09-02\"并提示运行时核验'。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-idf-02",
+      "routed_to": "esp32-ota",
+      "expected_skills": ["esp32-idf", "esp32-ota"],
+      "routing_match": false,
+      "routing_rationale": "仅凭清单路由：用户最终交付物是 OTA 能力与 esp_ota 代码。esp32-ota description 直接触发（'Use when the user says OTA 升级… asks 加双分区可回滚'，且自带 minimal partitions CSV template），对 prompt 覆盖最完整；esp32-idf description 自身写明 'Route … OTA … to their dedicated esp32-* skills'。故主路由落 esp32-ota，而非 expected 首元素 esp32-idf。存在部分歧义（'改工程/分区表'也命中 esp32-idf 的 partitions.csv/分区表触发词），但 esp32-ota 单技能即可覆盖分区表+回滚+实施全链，是最具体匹配。",
+      "answer_summary": "按 esp32-ota Workflow A 作答：读 target 先行（idf.py partition-table），拒绝编造分区偏移；给 OTA 最小完整 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1，Offset 列全部留空自动排布，Size 按实测 flash 与 app 体积调整）；menuconfig 预选 'Factory app, two OTA definitions' 并启用 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE；实现 esp_ota_get_next_update_partition → begin/write/end → set_boot_partition，下载用 esp_https_ota（证书校验不可关闭）；新镜像首启自检通过后必须调 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚（第一反陷阱）；无真机结论标 Build Verification Only。CSV 字段/Type/SubType 机制细节反向 hand-off esp32-idf。",
+      "verdict": "fail",
+      "assertion_results": [
+        {
+          "assertion": "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
+          "verdict": "WARN",
+          "evidence": "OTA 改造识别与双 OTA 布局均满足：esp32-ota/SKILL.md L36（ota_0/ota_1+otadata 前提）、L44-58（最小 CSV 模板）、L90（'Factory app, two OTA definitions' 预设）。'只建骨架→移交 esp32-ota'的合同确实存在于 esp32-idf/SKILL.md L17 与 Hand-off L63——但由于清单路由直接落在 esp32-ota，该 handoff 流向从未发生；实际服务技能本身就是实施方。断言描述的是 expected 首技能的合同，与实际路由产物不一致。"
+        },
+        {
+          "assertion": "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
+          "verdict": "PASS",
+          "evidence": "esp32-ota/SKILL.md L44 'Offset 列全部留空 = 交由构建自动排布…不要手填记忆里的偏移值'、L48-49 模板注释 '各 Size 按实际 flash 容量与 app 体积调整…以 idf.py partition-table 输出为准'、L25 '拒绝编造分区偏移/大小'、Pitfalls L123；交叉印证 esp32-idf/references/partition-table-template.md L39（'Size 为示意值'）与 L43（反幻觉红线）。"
+        },
+        {
+          "assertion": "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
+          "verdict": "PASS",
+          "evidence": "（按实际路由技能核验）esp32-ota/SKILL.md L71 第一反陷阱（开 ROLLBACK 后必须显式调 esp_ota_mark_app_valid_cancel_rollback()，否则首启重启即回滚）、L90/L92 配套实现、Pitfalls L122；esp32-idf 侧 menuconfig-decisions.md L19 同一事实，双方一致无冲突。"
+        },
+        {
+          "assertion": "不直接产出完整 OTA 实现代码，避免与 esp32-ota 职责重叠",
+          "verdict": "FAIL",
+          "evidence": "该断言编码的是 esp32-idf 的范围合同（SKILL.md L17 '本 Skill 只建分区表骨架，实施移交 esp32-ota'）。实际路由技能是 esp32-ota，其 description 与 Workflow A 第 3 步（SKILL.md L91 esp_ota_get_next_update_partition → begin/write/end → set_boot_partition、esp_https_ota）明确将'给出 esp_ota 流程'作为本职交付。按 esp32-ota 指引作答必然产出实现流，断言从被路由技能视角不可满足。根因是场景 expected 首技能与包内清单路由设计冲突（esp32-idf 清单自我路由 OTA 到专职技能），而非技能内容缺陷；两技能边界定义本身互补且自洽。"
+        }
+      ],
+      "issues": [
+        "路由不匹配（核心发现）：场景 expected 首元素 esp32-idf 与插件清单自身路由规则冲突——esp32-idf description 明确 'Route … OTA … to their dedicated esp32-* skills'，esp32-ota description 对本 prompt（OTA 升级+分区表+esp_ota 代码）覆盖最完整，全新上下文路由器必然落在 esp32-ota。建议将场景 expected_skills 顺序改为 ['esp32-ota','esp32-idf']，或改写 prompt 使 esp32-idf 入口成立（如只问分区表如何改）。",
+        "断言 1/4 以 esp32-idf 视角编写，对实际路由技能不可满足/不适用（断言本身措辞无误，已核对 scenarios.json 原文）。"
+      ]
+    },
+    {
+      "id": "esp32-idf-03",
+      "routed_to": "esp32-idf",
+      "expected_skills": ["esp32-idf"],
+      "routing_match": true,
+      "routing_rationale": "清单命中：'idf.py workflow (create-project/set-target/menuconfig/build/flash/monitor)'、触发词 烧写/monitor。",
+      "answer_summary": "Preflight：idf.py --version 实测本机 IDF；target 与模组丝印/原理图核对一致（esp32s3）才继续。命令链：idf.py create-project → set-target esp32s3（会清 build/ 并重生成 sdkconfig；默认 target 是 esp32）→ menuconfig（决策点见 menuconfig-decisions.md）→ build → flash -p PORT → monitor，可链式执行。烧写前确认串口设备（-p/ESPPORT）与权限；分区需求超单 factory 时先改 partitions.csv（模板下沉到 partition-table-template.md）。烧写验证前所有结论标注 Build Verification Only。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "Preflight 先 idf.py --version 实测本机 IDF，并核对模组丝印/原理图与 esp32s3 target 一致",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Preflight L23；L38 'target 必须与芯片实物核对：模组丝印/原理图上的芯片型号，与 set-target 的值一致才能继续；对不上就停下来问'；Contracts L49 同旨。"
+        },
+        {
+          "assertion": "给出完整命令链：idf.py create-project → set-target esp32s3（说明会清 build 并重生成 sdkconfig，默认 target 是 esp32）→ build → flash -p PORT → monitor，可链式执行",
+          "verdict": "PASS",
+          "evidence": "Workflow A L75-80 完整命令块，L76 行内注释 '清空 build/ 并重新生成 sdkconfig；默认 target 是 esp32'，L79 '可链式执行，顺序由 idf.py 保证；-p 也可用 ESPPORT'；Pitfalls L110（勿跳过 set-target）。"
+        },
+        {
+          "assertion": "menuconfig 决策与分区模板按需下沉到 references（menuconfig-decisions / partition-table-template）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L77 'idf.py menuconfig # 决策点见 references/menuconfig-decisions.md'；L84 '分区需求超\"单 factory\"时，先改 partitions.csv 再 build（模板见 references）'；两份 reference 文件实际存在且内容对应（menuconfig-decisions.md L18 分区预设；partition-table-template.md 模板一/二）。"
+        },
+        {
+          "assertion": "烧写前确认串口设备与权限；无板上验证结果前标注 Build Verification Only，不声称'已可用'",
+          "verdict": "PASS",
+          "evidence": "Contracts L51 '烧写通道：确认串口设备（-p PORT 或 ESPPORT）与权限'；Validation Gates L106 '无真实硬件证据时，汇报必须标注 Build Verification Only'；Pitfalls L114 '不要把\"build 通过\"汇报成\"板子可用\"'。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-release-gate-01",
+      "routed_to": "fw-release-gate",
+      "expected_skills": ["fw-release-gate"],
+      "routing_match": true,
+      "routing_rationale": "清单直接命中触发语 'Use when the user asks 镜像发布前检查什么'。",
+      "answer_summary": "按 Workflow A 主路径逐项给可脚本化检查单（release-checklist.md 提供完整 sh 骨架，pass/fail 计数、全绿退出 0）：1 产物存在+.sha256 成对且门禁重算一致；2 命名 lint 五段式（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），device/version/channel/date 与构建记录一致、日期取自构建记录不手填；3 零外链扫描；4 密钥/凭据扫描（只报路径）；5 回滚预案成文；6 HIL 徽章达标——渠道版必须 ≥ HIL Verified，Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注；7 发布说明含已知问题（无也要写'已知问题：无'）；8 LICENSE 清单。负向验证：故意改名/篡改镜像/删 .sha256，门禁必须拦截。任一项失败修复后重跑全单。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出可脚本化检查单：产物存在+sha256 成对且门禁重算一致、命名 lint、零外链扫描、密钥扫描、回滚预案、HIL 徽章达标、发布说明含已知问题、LICENSE 清单",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow A L81-88 八项逐条列出；Contracts L37（'门禁重算通过——构建时算过不算数'）；references/release-checklist.md §1-§8 提供可执行 sh 骨架（L7-69）含 sha256sum -c 重算、密钥扫描只报路径（L51-52、L76）。"
+        },
+        {
+          "assertion": "命名按五段式模板核对（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），文件名与构建记录一致，不手填日期",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L57-63 五段式模板 + 'date：构建日期，取自构建记录（SOURCE_DATE_EPOCH / CI 输出），不是手填'；Workflow A L82 '文件名中的 device/version/channel/date 与构建记录一致'；naming-and-versioning.md L10 模板、L47 lint 判则第 7 条；Contracts L41 反幻觉红线。"
+        },
+        {
+          "assertion": "徽章门槛：渠道版必须 ≥ HIL Verified；Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注",
+          "verdict": "PASS",
+          "evidence": "Contracts L40 逐字覆盖；Workflow A 第 6 项 L86；Pitfalls L123；release-checklist.md §6 L57-59（发布说明未载明 HIL Verified 即 FAIL）。"
+        },
+        {
+          "assertion": "要求负向验证：故意破坏一项（改名/篡改镜像/删 .sha256），门禁必须能拦截",
+          "verdict": "PASS",
+          "evidence": "Validation Gates L115 '负向验证：故意破坏一项（改名/篡改镜像一个字节/删 .sha256），门禁必须拦截'；release-checklist.md §3 L79-85 四条破坏测试'四条全拦住才算门禁可用；拦不住任何一条的检查项是摆设，删掉重写'。"
+        },
+        {
+          "assertion": "任一项失败修复后重跑全单，不是只补失败项",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L90 '任一项失败 → 修复后重跑全单（不是只补失败项）'；naming-and-versioning.md §5 L63 '改名/改版后重跑全单'。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-release-gate-02",
+      "routed_to": "fw-release-gate",
+      "expected_skills": ["fw-release-gate"],
+      "routing_match": true,
+      "routing_rationale": "清单直接命中 'proposes 把签名私钥放进 CI 环境变量 (refuse with a governance plan)'。",
+      "answer_summary": "明确 refusal：CI 明文环境变量会进日志、被子进程继承、落进镜像层，'仓库是私有的'不改变泄露面。治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查。非对称三不变式：固件/设备只嵌公钥（或摘要）、私钥只在构建/签名机、渠道子密钥分发。ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot。",
+      "verdict": "warn",
+      "assertion_results": [
+        {
+          "assertion": "明确拒绝（refusal）：CI 明文环境变量会进日志、被子进程继承、落进镜像层，私有仓库不改变泄露面",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Pitfalls L119 '明文变量会进日志、被子进程继承、落进镜像层；\"仓库是私有的\"不改变泄露面'（与断言逐点对应）。"
+        },
+        {
+          "assertion": "给出治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查",
+          "verdict": "PASS",
+          "evidence": "Pitfalls L119 '正确姿势：构建与签名分离，CI 只留公钥摘要做验证性检查'；签名与密钥治理 L47-48 不变式 1/2（'私钥只存在于构建/签名机（离线机或受控签名服务），永不进 git、CI 明文变量、日志'）。"
+        },
+        {
+          "assertion": "给出非对称模式：固件只嵌公钥（或公钥摘要）、私钥仅构建/签名机、渠道子密钥分发",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L45-49 三条治理不变式逐字覆盖（L47 固件/设备只嵌公钥（或公钥摘要）；L48 私钥只在构建/签名机；L49 渠道子密钥分发）。"
+        },
+        {
+          "assertion": "若私钥已配置过：按已泄露处理（停用→评估作废/轮换→复盘），不是删掉变量就完事",
+          "verdict": "WARN",
+          "evidence": "技能内无'已配置私钥的泄露响应 runbook'。最接近的仅有：L49 '某渠道泄露只作废该渠道子钥'（子钥作废概念）与 Workflow C L103 '子钥作废流程成文后才放行'（流程须成文的放行前置），均非针对'根钥/签名私钥已进过 CI 变量'的处置步骤（停用→评估作废/轮换→复盘）。严格按技能作答时该链路缺失，需依赖通用安全知识补齐——按诚实纪律记 WARN。"
+        },
+        {
+          "assertion": "ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot，不混在发布流程里展开",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L51 'ESP32 侧 eFuse / Secure Boot v2 / Flash 加密机制 → esp32-secureboot'；Hand-off 表 L72；description 尾句同旨。"
+        }
+      ],
+      "issues": [
+        "fw-release-gate 缺'签名私钥已泄露/已进 CI'的处置 runbook（停用→评估作废/轮换→复盘）。现状只有子钥作废概念（L49）与'作废流程成文'前置（L103）。建议在'签名与密钥治理'节补 3-4 行泄露响应步骤，即可闭合 fw-release-gate-02 断言 4。"
+      ]
+    },
+    {
+      "id": "fw-release-gate-03",
+      "routed_to": "fw-release-gate",
+      "expected_skills": ["fw-release-gate"],
+      "routing_match": true,
+      "routing_rationale": "清单直接命中 'asks 多渠道能否共用一把签名密钥'。",
+      "answer_summary": "模式级决策：多渠道共用一把无派生关系的密钥 = 单点泄露全线沦陷，且无法只作废一个渠道。推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥不动根。一句话边界：对称短码方案=固件必须内含铸码/校钥能力，提取固件即等于拿到铸码能力；非对称=提取固件只有验签公钥、不可铸码——商业授权一律优先非对称。放行前置：子钥作废/轮换预案成文；每个渠道镜像各自过发布门禁（校验和门禁重算、命名含渠道段、HIL 徽章）。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "给出模式级决策：单根钥跨渠道 = 单点泄露全线沦陷，且无法只作废一个渠道",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Pitfalls L120 '不要多渠道共用一把无派生关系的密钥——单点泄露全线沦陷且无法只作废一个渠道；用根钥 + 渠道子钥'。"
+        },
+        {
+          "assertion": "推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥",
+          "verdict": "PASS",
+          "evidence": "签名与密钥治理不变式 3（L49）'根密钥只签发渠道子密钥/子产物，某渠道泄露只作废该渠道子钥，不动根'；Workflow C 第 3 步 L103 '多渠道：根钥 + 渠道子钥'。"
+        },
+        {
+          "assertion": "一句话边界声明：对称短码方案=固件含铸码能力（提取固件即可铸码），非对称=提取固件不可铸码——商业授权优先非对称",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L51 '对称方案 = 固件必须内含铸码/校钥能力，提取固件即等于拿到铸码能力；非对称方案 = 提取固件只有验签公钥，不可铸码…商业授权一律优先非对称'；Pitfalls L126 同旨。"
+        },
+        {
+          "assertion": "放行前置：子钥作废/轮换预案成文；多渠道镜像各自走发布门禁（校验和、命名渠道段、徽章）",
+          "verdict": "PASS",
+          "evidence": "Workflow C L103 '子钥作废流程成文后才放行'；发布门禁按产物逐个执行（release-checklist.md §1 遍历 BIN_DIR 全部产物，含 sha256 重算）；渠道段必须在文件名且 lint 可查（naming-and-versioning.md §3 L33）；徽章前置 Contracts L40。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "fw-release-gate-04",
+      "routed_to": "fw-release-gate",
+      "expected_skills": ["fw-release-gate"],
+      "routing_match": true,
+      "routing_rationale": "清单命中 'artifact integrity (mandatory sha256 sidecar…SOURCE_DATE_EPOCH reproducible-build declaration)'；Determine Task Type 第 4 项 '完整性/复现性排障：sha256 对不上、两次构建不一致 → Workflow D'。",
+      "answer_summary": "不直接放行。先给不可复现的常见来源：构建/覆盖层时间戳与随机 ID、ipk 仓库版本漂移、构建环境（host 工具）差异。验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希；机制细节路由 openwrt-image-build 的 reproducible-build。门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic；发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分。",
+      "verdict": "pass",
+      "assertion_results": [
+        {
+          "assertion": "不直接放行：先说明不可复现的常见来源——覆盖层时间戳/随机 ID、ipk 仓库版本漂移、host 工具差异",
+          "verdict": "PASS",
+          "evidence": "Workflow D L108 '仍不一致按\"环境差异 → 覆盖层时间戳/随机 ID → ipk 仓库漂移\"排查'（环境差异覆盖 host 工具差异）；门禁前提 L8 '任一失败即不发布'与 Workflow D L109 '无法复现就如实标注，不改口\"应该一样\"'共同构成不放行立场。"
+        },
+        {
+          "assertion": "给出验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希，机制细节路由 openwrt-image-build 的 reproducible-build",
+          "verdict": "PASS",
+          "evidence": "Workflow D L108 '固定 SOURCE_DATE_EPOCH 重构建两次比对哈希…（机制细节 → openwrt-image-build）'；Offline Baseline L33 与 Hand-off 表 L71 均把 SOURCE_DATE_EPOCH 机制侧显式路由 openwrt-image-build 的 reproducible-build reference。"
+        },
+        {
+          "assertion": "门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic",
+          "verdict": "PASS",
+          "evidence": "Contracts L38 '无法复现时如实标注，禁止声称 deterministic'；Workflow D L109 '结论写入发布记录——无法复现就如实标注，不改口\"应该一样\"'。"
+        },
+        {
+          "assertion": "发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分",
+          "verdict": "PASS",
+          "evidence": "Contracts L38 '可复现构建声明：发布记录写明 SOURCE_DATE_EPOCH 取值与来源'——位于'Contracts（发布物契约）'节，即发布物完整性契约本体。"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 8,
+    "warn": 1,
+    "fail": 1,
+    "routing_match_true": 9,
+    "routing_match_false": 1,
+    "total": 10
+  }
+}

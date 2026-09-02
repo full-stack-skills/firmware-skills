@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated": "2026-09-02",
+  "generated": "2026-09-03",
   "count": 65,
   "scenarios": [
     {
@@ -101,15 +101,16 @@
       "id": "esp32-idf-02",
       "prompt": "帮我把 ESP-IDF 工程改成支持 OTA 升级的，听说要改分区表，直接把 esp_ota 的代码全给我写了吧。",
       "expected_skills": [
-        "esp32-idf",
-        "esp32-ota"
+        "esp32-ota",
+        "esp32-idf"
       ],
       "assertions": [
         "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
         "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
         "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
-        "不直接产出完整 OTA 实现代码，避免与 esp32-ota 职责重叠"
-      ]
+        "ESP-IDF 侧仅做工程层支撑，不越权产出 OTA 实现"
+      ],
+      "note": "2026-09-02 forward-test 修正：原 expected 首元素与包自路由规则矛盾（description 明示 OTA → esp32-ota），已重排并泛化断言"
     },
     {
       "id": "esp32-idf-03",

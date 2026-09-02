@@ -1,0 +1,402 @@
+{
+  "batch": "FT7",
+  "results": [
+    {
+      "id": "esp32-debug-01",
+      "routed_to": "esp32-debug",
+      "expected_skills": ["esp32-debug"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "先走复位原因分类决策树：看门狗复位 vs panic vs 掉电/供电三类，判据与证据链各不相同，不预设结论",
+          "verdict": "PASS",
+          "evidence": "esp32-debug/SKILL.md L12（Determine Task Type 1：随机重启→crash-triage 决策树→Workflow B）、L65、L86-91（Workflow B）；references/crash-triage.md §1 三类复位原因定位表（panic/看门狗/掉电-供电，'判据与证据链各不相同'的表结构即证据来源按顺序取）、§2 随机重启排查决策树、§4 常见误判（'重启了=看门狗'列为误判）。"
+        },
+        {
+          "assertion": "指出证据缺失根因：未配置 coredump 时崩溃现场会被下一次重启覆盖；先补 coredump 配置（flash 或 UART 目的地）再等复现",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L27（Preflight 4：'coredump 没配置就没了证据'）、L114（Pitfall 5：'证据早被下一次重启覆盖；先补配置再等复现'）、L26（目的地 flash 或 UART）；crash-triage.md §2 步骤 2（'否 → 证据已被覆盖：先补配置（coredump 分区 + 目的地），再造复现条件'）。"
+        },
+        {
+          "assertion": "给出提取与分析命令：idf.py coredump-info 概览 → idf.py coredump-debug 符号化，且强调须用与设备一致版本的 ELF",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L38（Contracts 2：分析用 idf.py coredump-info / coredump-debug）、L60-61 与 L83（崩溃处理流/Workflow A 同序）、L113（Pitfall 4：'不要用与目标设备不同版本的 ELF 去符号化 coredump——地址对不上，结论全错'）、L82（回溯地址需与固件版本匹配）。"
+        },
+        {
+          "assertion": "软件侧只收集硬件嫌疑证据（重启与负载/外设动作的相关性、多台同规律性），不下'供电问题'结论",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L77（refusal 边界：不输出'这就是电源问题'，只给嫌疑证据）、L90（Workflow B 3）、L115（Pitfall 6）；crash-triage.md §2 步骤 3（'重启是否与负载峰值/外设动作/供电切换时刻相关''同批次多台是否同规律''软件侧只收证据，不下结论'）、§4（'软件侧只能提嫌疑；定论必须实测'）。"
+        },
+        {
+          "assertion": "建议加心跳埋点与复位原因持久化记录，缩小无声重启时间窗",
+          "verdict": "PASS",
+          "evidence": "crash-triage.md §3.2（'埋点日志：关键阶段心跳打印，缩小无声重启的时间窗'）、§3.3（'记录启动原因：每次启动把复位原因写入持久日志'）；SKILL.md L91（Workflow B 4：加日志埋点 + 开 coredump 等复现）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-debug-02",
+      "routed_to": "esp32-debug",
+      "expected_skills": ["esp32-debug", "fw-hil-testing"],
+      "routing_match": true,
+      "verdict": "WARN",
+      "assertion_results": [
+        {
+          "assertion": "确认软件侧证据链已穷尽且指向硬件嫌疑（重启与电机启动强相关、多台同规律），但明确不下'供电问题'定论——软件侧只能给嫌疑证据",
+          "verdict": "PASS",
+          "evidence": "crash-triage.md §1 分类纪律（'软件日志干净 + 与负载强相关 = 硬件嫌疑，不等于硬件定论'）、§1 掉电/供电类行（重启时机与负载/外设动作相关）、§2 步骤 3；SKILL.md L77、L90、L115。电机启动=负载相关、多台同规律正是 §2 步骤 3 要求收集的两类证据。"
+        },
+        {
+          "assertion": "hand-off fw-hil-testing：真机在环用电源测量/示波器验证电压跌落或复位信号异常，出硬件验收证据",
+          "verdict": "PASS",
+          "evidence": "crash-triage.md §2 步骤 3（'带上证据清单 → hand-off fw-hil-testing（示波器/电源测量，真机定论）'）、§1 掉电类行下一步同；SKILL.md L71（Hand-off 表：已定位供电/电源/硬件问题→hand-off fw-hil-testing 真机在环验证）、L90；fw-hil-testing 清单描述即'证据链中枢'。"
+        },
+        {
+          "assertion": "提示可同时准备的软件侧缓解观察项（如电机启动与敏感操作的时序错开）仅作假设，不以未测量结论交付",
+          "verdict": "WARN",
+          "evidence": "前半句的诚实框架被强支持：SKILL.md L77（嫌疑≠定论）、L106（无真机标 Pending HIL）、crash-triage.md §3（可同时准备的软件侧证据加固：coredump 常开/埋点/启动原因记录）、§3.4（扰动逐项加减找触发因子）。但技能未提供任何'软件侧缓解'类内容（如电机启动与敏感操作时序错开这类假设性缓解观察项）——该元素只能靠模型自行外推，技能正文既未给出也未示范'缓解建议须降级为假设'的表述模板，跨运行一致性无保障。"
+        },
+        {
+          "assertion": "修复后的定论须有实测记录；无硬件证据标注 Pending HIL",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L106（Validation Gate 5：'无真机/无现场：结论一律标 Build Verification Only / Pending HIL'）、L84（无复现条件明确说未复现验证，不声称已修复）、L77；crash-triage.md §3.4（涉硬件测量即属 fw-hil-testing）、§2 步骤 4（硬件→fw-hil-testing 出验收证据后再谈量产）。"
+        }
+      ],
+      "issues": [
+        "esp32-debug-02 断言3 WARN：技能对'硬件嫌疑→fw-hil-testing'的诚实纪律覆盖完整，但缺少'软件侧缓解观察项（如时序错开）仅作假设'的内容支撑——crash-triage.md §3 只有证据加固手段（coredump/埋点/启动原因记录/扰动复现），无缓解类建议或其表述规范，该元素依赖模型外推。"
+      ]
+    },
+    {
+      "id": "esp32-debug-03",
+      "routed_to": "esp32-debug",
+      "expected_skills": ["esp32-debug"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "纠正：经典 ESP32 不支持 SWD，调试走 JTAG，需要外部适配器（如 ESP-Prog）——经典 ESP32 无内置 USB-Serial/JTAG（基线高置信）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L24（Preflight 1：经典 ESP32 无内置 USB-Serial/JTAG，需外部适配器（如 ESP-Prog）才能 JTAG；不支持 SWD（基线高置信））、L37（Contracts 1）、L111（Pitfall 2）；references/jtag-openocd.md §1（'不支持 SWD——排任何 SWD 调 ESP32 的任务都属误导，走 JTAG'、'经典 ESP32 无内置 USB-Serial/JTAG'）。"
+        },
+        {
+          "assertion": "给出正确路径：OpenOCD 随 IDF 安装，openocd -f board/<目标板>.cfg 启动，GDB 连接后验证断点/单步/变量查看",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L37、L97（Workflow C 3：openocd -f board/<目标板>.cfg）、L98 与 L105（断点/单步/变量查看各验证一次）；jtag-openocd.md §1（'OpenOCD 随 IDF 安装，无需另装；启动形如 openocd -f board/<目标板>.cfg'）、§3.2（'GDB 连接后验证三件事：断点命中、单步、变量查看'）。"
+        },
+        {
+          "assertion": "接线与 TCK 频率标注'以板与探测器件实测'，不编造具体引脚号或频率数值",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8、L33、L39（Contracts 3：JTAG 接线引脚、TCK 频率引用官方板文档或实测，二选一）、L96、L112（Pitfall 3）；jtag-openocd.md §2 表（接线：按探测器件与目标板官方引脚文档逐根复核，'引脚定义本文件不列（防编造）'；频率：从保守值起试，'以板与探测器件实测为准'）、§5 反幻觉边界（不提供排针引脚号/TCK 具体频率数值）。"
+        },
+        {
+          "assertion": "若无探测器：提示运行时 GDB stub（CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME）可作无 JTAG 硬件的串口 GDB 手段",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L49（手段矩阵行：运行时 GDB stub | CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME | 无 JTAG 硬件的串口 GDB 调试 | 没有探测器的临时手段）、L32（Offline Baseline：只陈述 Kconfig 事实，不引具体文档页）、L116（Pitfall 7）；jtag-openocd.md §3.4、§4 选型表（'没有探测器，临时要 GDB → 运行时 GDB stub'）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-lowpower-01",
+      "routed_to": "esp32-lowpower",
+      "expected_skills": ["esp32-lowpower"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "读 target 先行：先确认芯片（ESP32-C3）与现有 sdkconfig 睡眠配置，再谈策略",
+          "verdict": "PASS",
+          "evidence": "esp32-lowpower/SKILL.md L21-22（Preflight：grep CONFIG_ESP_SLEEP/CONFIG_PM_ 与 CONFIG_IDF_TARGET）、L25（'读 target 先行：芯片型号决定唤醒源集合与 ULP 形态；没有芯片实物/工程 target 前，不回答哪些唤醒源可用'）。"
+        },
+        {
+          "assertion": "周期上报主策略 = deep sleep + RTC timer 唤醒（基线确认 µs 精度定时）；按钮事件叠加 EXT0/EXT1（RTC GPIO，仅认 RTC GPIO 集合，引脚不确定即停）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L77（Workflow A 决策表：周期上报→deep sleep + RTC timer 唤醒，µs 精度）、L78（按键/外部事件→EXT0/EXT1，注意 RTC GPIO 引脚集合限制）、L91（Workflow B 4：只认 RTC GPIO 集合，不确定即停）、L38（Contracts 2 六类唤醒源）；references/wakeup-sources.md §1 表（RTC Timer µs 精度/EXT0/EXT1）、L17（多源可叠加：timer 兜底 + EXT1 按键即醒）、§3、§4（引脚事实不确定即停）。"
+        },
+        {
+          "assertion": "跨睡眠小状态（上报计数/上次时间戳）放 RTC 内存保留；掉电不可丢的数据入睡前快照到 NVS，并说明两者取舍（跨睡眠找 RTC、跨掉电找 NVS、NVS 有写入寿命考量）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L43-53（专节决策表：跨换电池/掉电存活 RTC=否/NVS=是；适用行'睡眠计数器、上次上报时间戳'vs'配置、累计量、必须掉电不丢'；NVS'有写入寿命考量，别在高频循环里刷'；常见组合）、L82（Workflow A 3）；references/sleep-modes.md §3（决策口诀'跨睡眠找 RTC，跨掉电找 NVS；高频写入两边都别去'）。"
+        },
+        {
+          "assertion": "明确拒绝给深睡 µA 具体数字：基线标注 UNVERIFIED，续航测算必须用功率计板级实测电流做占空比加权，而不是数据手册转述值",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L40（Contracts 4：深睡电流数值=UNVERIFIED，基线仅确认 µA 数量级，'本 Skill 不把任何具体数值当事实输出'）、L95（Workflow C refusal 立场）、L100（续航≈容量÷占空比加权平均电流）、L107（Validation Gate 3：数据手册数字不作为验收依据）、L112、L117（Pitfall 1/6）；sleep-modes.md §4（'芯片裸值不是板级值'）。"
+        },
+        {
+          "assertion": "真机逐唤醒源触发验收与长跑功耗验收路由 fw-hil-testing；无真机结论标 Pending HIL",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L64（Hand-off：功耗实测/真机在环验收→fw-hil-testing）、L101（Workflow C 5：长跑与温度维度验收→fw-hil-testing；无真机标 Pending HIL）、L106（Validation Gate 2：每个配置的唤醒源逐一实测触发，无真机=Pending HIL）；wakeup-sources.md §5.1（逐源触发）、§5.4（无真机=Pending HIL，路由 fw-hil-testing）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-lowpower-02",
+      "routed_to": "esp32-lowpower",
+      "expected_skills": ["esp32-lowpower"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "refusal 立场：拒绝把 10µA 这类转述数字当事实——基线仅确认深睡电流为 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA），具体数值标 UNVERIFIED 须运行时核验",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L40（Contracts 4 原文即'基线仅确认 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA）…本 Skill 不把任何具体数值当事实输出'）、L8、L95（'回答不是对，是拒绝把这个数字当事实'）、L112（Pitfall 1 点名'典型 10µA'）；sleep-modes.md §4 背景段与 §5 UNVERIFIED 清单第 1 条。"
+        },
+        {
+          "assertion": "解释数据手册值 ≠ 板级值：外设漏电、上拉电阻、LED、稳压器静态电流都会把实测电流放大数倍，'拆干净再测'也不代表产品真实配置",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L95（'数据手册值是芯片裸电流，不是你这块板的电流（外设漏电、上拉电阻、LED、稳压器静态电流都会数倍放大）'）、L98（Workflow C 2：板上所有外设按产品真实配置连接，'不要拆干净再测'）；sleep-modes.md §4（'放大数倍至数十倍'）、§4 步骤 2（'禁止拆干净再测——那测的是不该存在的乐观值'）。"
+        },
+        {
+          "assertion": "给出实测方法：功率计/源表串联供电回路、按产品真实外设配置、进入睡眠稳定 ≥5 分钟取平均电流、记录供电方式与板级配置",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L97-99（Workflow C 步骤 1-3 原文逐条对应：功率计/源表串联进供电回路+记录供电电压与供电方式；按产品真实配置；稳定 ≥5 分钟后记录平均电流，瞬时闪断值不作数）、L107（Validation Gate 3 留档：供电方式、板级配置、平均电流）；sleep-modes.md §4 步骤 1-3、5。"
+        },
+        {
+          "assertion": "续航算法：续航 ≈ 电池可用容量 ÷ 占空比加权平均电流（实测输入），缺实测输入的续航承诺不出口",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L100（Workflow C 4 公式原文一致）、L108（Validation Gate 4：'缺实测输入的续航承诺不出口'）、L117（Pitfall 6）、L84（没有实测值之前续航结论一律不出口）；sleep-modes.md §4.4-4.5（工作相电流一并占空比加权）。"
+        },
+        {
+          "assertion": "真机功耗/长跑/温度维度验收路由 fw-hil-testing，无真机标 Pending HIL",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L101（Workflow C 5）、L64（Hand-off 表）、L106；sleep-modes.md §4.6（'温度漂移、电池自放电、老化等长周期因素 → fw-hil-testing 长跑验收；未实测 = Pending HIL'）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-lowpower-03",
+      "routed_to": "esp32-lowpower",
+      "expected_skills": ["esp32-lowpower"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "跨睡眠保存 → RTC 内存保留（醒来即得但换电池即失）；跨掉电存活 → NVS 快照（入睡前写入），两者取舍讲清，本例需求命中 NVS",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L43-53（决策表'跨换电池/掉电存活'行：RTC=否、NVS=是（flash 持久）；配置类数据适用 NVS；L53 常见组合'入睡前写一次 NVS'）；sleep-modes.md §3（RTC'换电池/掉电即失'、NVS'入睡前写，掉电不丢'）。配置变量+换电池存活的需求按决策表命中 NVS 快照。"
+        },
+        {
+          "assertion": "UART 唤醒 deep sleep 不在基线 6 类唤醒源（RTC Timer/Touch/EXT0/EXT1/ULP/deepsleep GPIO wake）内 → 标 UNVERIFIED，指引查官方 sleep_modes 文档运行时核验，不凭记忆答'可以'或'不可以'",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L38（Contracts 2：六类唤醒源原文列举；'基线未收录的唤醒手段（如 UART/蓝牙 wake）一律标 UNVERIFIED，不得写入答案'）；wakeup-sources.md §4（'UART 唤醒、蓝牙 wake 等基线未列举的唤醒手段：是否支持、支持条件，全部查官方 sleep_modes 页（运行时核验）'）；sleep-modes.md §5（UNVERIFIED 清单含'基线 6 类之外的唤醒手段（UART/蓝牙 wake 等）'，处理方式'查官方 sleep_modes/芯片数据手册或板级实测，二选一，不背记忆'）。"
+        },
+        {
+          "assertion": "按键/外部事件类唤醒建议回到 EXT0/EXT1（RTC GPIO 集合，具体引脚以芯片手册为准，不确定即停）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L78（决策表：按键/外部事件秒级唤醒→EXT0/EXT1）、L91（Workflow B 4：GPIO 类只认 RTC GPIO 集合，以芯片数据手册/官方引脚文档为准，不确定即停）、L116（Pitfall 5）；wakeup-sources.md §1 行 3/4、§3、§4。"
+        },
+        {
+          "assertion": "ULP 形态按芯片区分（ESP32=ULP-FSM，S2/S3=RISC-V ULP 或 FSM，C6/P4=LP 核），写 ULP 前先确认 target",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L39（Contracts 3 原文一致）、L25（读 target 先行）；wakeup-sources.md §2 表（ESP32=ULP-FSM；S2/S3=RISC-V ULP 或 FSM 核；C6/P4=LP 核 20/40 MHz）+ '写 ULP 程序前先确认 target'；sleep-modes.md §2。"
+        },
+        {
+          "assertion": "唤醒后用复位/唤醒原因查询打进启动日志，逐源真机触发验收，无真机标 Pending HIL",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L90（Workflow B 3：'唤醒后用复位原因/唤醒原因查询记录这次为什么醒，写进启动日志——没有唤醒原因日志的睡眠代码不算完成'）、L106（Validation Gate 2）；wakeup-sources.md §3（唤醒原因打进启动日志）、§5.1（逐源触发）、§5.4（无真机 = Pending HIL，路由 fw-hil-testing）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-ota-01",
+      "routed_to": "esp32-ota",
+      "expected_skills": ["esp32-ota"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "读 target 先行：第一步用 idf.py partition-table 读目标板实际分区布局，之后再谈改造",
+          "verdict": "PASS",
+          "evidence": "esp32-ota/SKILL.md L21（Preflight：idf.py partition-table '读 target 实际分区表——任何分区回答的起点'）、L25（'读 target 先行…拒绝编造分区偏移/大小'）、L89（Workflow A 1 第一步即读 target）。"
+        },
+        {
+          "assertion": "拒绝编造分区偏移：给出 OTA 最小 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1）时 Offset 留空走自动排布，最终布局以 idf.py partition-table 输出为准",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L42-58（'分区前提与最小 CSV 模板'节：六行 CSV 与断言命名逐一对应；'Offset 列全部留空 = 交由构建自动排布…不要手填记忆里的偏移值'；注释'最终布局以 idf.py partition-table 输出为准'）、L123（Pitfall 2）。"
+        },
+        {
+          "assertion": "说明 OTA 前提：至少 ota_0/ota_1 双槽 + otadata 分区，bootloader 按 otadata 的 ota_seq 选槽",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L36（Contracts 1 原文一致）；references/ota-state-machine.md §1（前两条：ota_0/ota_1 + otadata；bootloader 按 ota_seq 选槽，otadata 为空启动 factory）。"
+        },
+        {
+          "assertion": "给出 esp_ota_begin/write/end → esp_ota_set_boot_partition 顺序与 esp_ota_get_next_update_partition 轮转选槽",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L73（API 顺序原文：esp_ota_begin（OTA_SIZE_UNKNOWN）→ esp_ota_write → esp_ota_end → esp_ota_set_boot_partition；选槽用 esp_ota_get_next_update_partition() 轮转）、L91（Workflow A 3）；ota-state-machine.md §1（get_next_update_partition 按 ota_seq 轮转选非活动槽）、§3（步骤 2-5）。"
+        },
+        {
+          "assertion": "核心反陷阱：开启 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 后新映像必须显式调用 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚；并给出断电回滚真机验收要求（Pending HIL → fw-hil-testing）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L71（'本技能第一反陷阱'原文：不调用=首次重启就回滚进旧版）、L92（Workflow A 4：不给确认留下次再说）、L93+L115（断电回滚验收→fw-hil-testing；Validation Gate 2 真机执行，无真机=Pending HIL）、L117（Validation Gate 4 断电中断升级）、L122（Pitfall 1）；ota-state-machine.md §2；rollback-checklist.md §3（'真机，Pending HIL until executed'、§3.4 断电中断项、§3.6 无真机移交 fw-hil-testing）。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-ota-02",
+      "routed_to": "esp32-ota",
+      "expected_skills": ["esp32-ota"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "首要怀疑 PENDING_VERIFY 未确认：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 开启后新映像未调用 esp_ota_mark_app_valid_cancel_rollback()，重启即回滚旧版",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L13（Determine Task Type 2：'升级后设备跑回旧版本：疑似回滚 → Workflow B（排障，先查 PENDING_VERIFY 未确认）'）、L71（'升级成功后设备又跑回旧版本的头号原因就是自检确认被遗漏'）、L96-98（Workflow B 1）；references/rollback-checklist.md §4 排障速查前两行（确认调用从未执行/忘写确认调用→PENDING_VERIFY 未确认→机制性回滚）。"
+        },
+        {
+          "assertion": "给出排查顺序：确认调用是否存在且必然执行（自检卡死/崩溃在确认前）→ menuconfig 回滚开关 → 串口日志/coredump 证据（esp32-debug）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow B L96-100 顺序与断言完全一致：step 1 '新镜像里是否存在且必然执行的 esp_ota_mark_app_valid_cancel_rollback()？（自检挂死/任务阻塞会导致确认永不执行）'→ step 2 '确认 menuconfig：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE'→ step 3 '读证据：串口启动日志 + esp32-debug（coredump/复位原因）定位新镜像是否崩溃在确认之前'→ step 4 对照 rollback-checklist 重演。"
+        },
+        {
+          "assertion": "解释这是机制行为而非故障：NEW→PENDING_VERIFY→未确认即 INVALID 回滚，有效性状态存于 otadata 不在镜像内",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L99（'开启后语义就是未确认即回滚，属机制行为非故障'）、L62-69（状态机：NEW→PENDING_VERIFY→未确认→INVALID 回滚）、L37（Contracts 2：'镜像有效性状态存于 otadata（不在镜像内）'）；ota-state-machine.md §2 图（应用从未确认→INVALID→重启回滚）、§1（'镜像有效性状态存于 otadata，不在镜像内'）。"
+        },
+        {
+          "assertion": "建议按 rollback-checklist 重新演练升级流程验证修复",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L101（Workflow B 4：'对照 rollback-checklist 的验收单重演一遍升级流程'）；references/rollback-checklist.md §3 回滚验收（正向/显式失败/未确认/中断四项 + 每项记录）即演练清单。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-ota-03",
+      "routed_to": "esp32-ota",
+      "expected_skills": ["esp32-ota", "esp32-idf"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "纠正误区：OTA 本质需要网络通道（esp_https_ota 走 HTTPS 拉取镜像），离线设备无法 OTA——明确拒绝'离线也能 OTA'的前提",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L15（Determine Task Type 4：'没网也要升级/离线刷机：超界 → refusal 路由 esp32-idf'）、L80（Hand-off：'离线设备升级（无网络）| refusal：OTA 本质需要网络'）、L39（Contracts 4：esp_https_ota 走 HTTPS）、L126（Pitfall 5：'不要承诺离线设备也能 OTA'）。"
+        },
+        {
+          "assertion": "给出正确替代：离线设备走 USB 串口烧录（idf.py flash），路由 esp32-idf",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L79（Hand-off：'USB 串口烧录 | esp32-idf'）、L80、L126（'离线走 USB 串口烧录（路由 esp32-idf）'）；具体命令由第二技能 esp32-idf 提供——esp32-idf/SKILL.md L79 'idf.py -p /dev/ttyUSB0 flash monitor'，其 frontmatter 亦列 idf.py flash workflow。两技能合流后断言完整满足。"
+        },
+        {
+          "assertion": "不编造任何'离线 OTA'机制或协议",
+          "verdict": "PASS",
+          "evidence": "esp32-ota/SKILL.md 全文无任何离线 OTA 机制描述；L15/L80/L126 三处均以 refusal+路由收口，且 Offline Baseline（L31-32）声明'行为变化以官方 OTA 文档为准，不凭记忆断言'。技能设计中该前提被显式拒绝，无编造空间。"
+        },
+        {
+          "assertion": "如设备可临时带回有网环境，可按主路径走 OTA 并提醒升级决策检查单（电量/窗口/回滚预案）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L103-110 升级决策检查单：第 2 条'窗口与电量：电池设备电量高于阈值；业务空闲窗口；升级中不断电'、第 4 条'回滚预案：确认逻辑已实现并演练过；失败可回旧版'；references/rollback-checklist.md §1 第 3 行（电量/窗口）与第 6 行（回滚预案）。'带回有网环境'即回到 Workflow A 主路径的正常前提，检查单三要素均有原文支撑。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-secureboot-01",
+      "routed_to": "esp32-secureboot",
+      "expected_skills": ["esp32-secureboot"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "明确拒绝（refusal）：签名私钥绝不进 git/CI 明文——私有仓库不改变泄露面（历史提交、token 泄露、协作者扩权都会带出密钥）",
+          "verdict": "PASS",
+          "evidence": "esp32-secureboot/SKILL.md L13（Determine Task Type 2：'key 提交进 git 类请求直接 refusal'）、L67（Hand-off refusal 行）、L94（Pitfall 1：'方便 CI 不是理由'）；references/key-governance.md §1（生产签名私钥进 git/CI='绝不'）、§2.1（'把 secure boot key 提交到 git 方便 CI → 拒绝'）、§6（'从未进过 git 历史（含早期提交）'）。泄露面具体向量（token/协作者）为合理展开，核心 refusal 与'绝不'立场有逐字支撑。"
+        },
+        {
+          "assertion": "说明后果：私钥泄露后只能靠 eFuse 槽位撤销止损，而 KEY_REVOKEX 撤销不可逆，ESP32 单槽无退路",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L94（'泄露后只能靠不可逆的槽位撤销止损'）、L47（'KEY_REVOKEX 撤销，不可逆'+ESP32 摘要槽仅 1 个）；key-governance.md §4.4（'ESP32 单槽，撤销=换硬件'）、§5（'ESP32 单槽无撤销余地'）；sb2-facts.md §1（摘要槽 ESP32 仅 1 个/KEY_REVOKEX 不可逆）、§5（'ESP32 单槽无退路——换钥=换硬件'）。"
+        },
+        {
+          "assertion": "给出治理方案：构建与签名分离（CI 产出未签名制品，隔离签名服务/离线机签名），CI 只留公钥摘要做验证性检查，发布制品走 fw-release-gate 门禁",
+          "verdict": "PASS",
+          "evidence": "key-governance.md §3.1（'构建与签名分离：CI 产出未签名制品；签名在隔离签名服务/离线机完成'）、§3.3（'CI 只需要公钥摘要的预期值做验证性检查——公钥/摘要不是秘密'）、§3.2（'走 fw-release-gate 的发布命名与校验门禁'）；SKILL.md L67（'拒绝并给治理方案（Workflow 第 4 步 + key-governance）'）、L69（Hand-off：发布命名/校验和/制品门禁→fw-release-gate）。"
+        },
+        {
+          "assertion": "提示若密钥已提交过：按已泄露处理（停止使用、评估撤销、复盘），而不是仅从当前版本删除",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L26（Preflight 4：'有没有进过 git？（进过 = 按已泄露处理，见 key-governance）'）、L90（Validation Gate 5：'git 历史/CI 日志无密钥（含历史提交）'）；key-governance.md §2.2（出现在 CI 明文变量/Docker 镜像/日志/issue 附件→视为已泄露）、§5 泄露响应（'立即停止用该钥签名 → 启动槽位撤销评估（注意不可逆）→ 受影响设备按预案换钥或召回评估 → 复盘入库'）——与断言三步一一对应。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-secureboot-02",
+      "routed_to": "esp32-secureboot",
+      "expected_skills": ["esp32-secureboot"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "给出决策顺序：开发阶段 rehearsal（不烧生产 eFuse 走通签名/FE 开发模式/OTA 升级回滚全流程）→ 密钥治理落位（保管/备份/撤销预案）→ 生产小批量试产烧录 → 验证开机/OTA/回滚 → 放量",
+          "verdict": "PASS",
+          "evidence": "SKILL.md Workflow L76-82 步序与断言一致：step 2 '开发阶段 rehearsal（必做）：在不烧生产 eFuse 的前提下走通全流程——密钥生成、签名、开发模式 FE（≤3 次明文烧录纪律）、OTA 签名镜像升级、失败回滚'→ step 3 '密钥治理落位（烧录前门禁）…撤销预案…写清'→ step 4 '先小批量试产验证开机、OTA、升级失败回滚，再放量'；sb2-facts.md §4.2-4.3 同序。"
+        },
+        {
+          "assertion": "强调 eFuse 一次性与不可逆：写保护/撤销不可逆，公钥摘要不可开读保护（软件校验需读取，误开读保护无法启动）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L8（每一步都碰 eFuse——一次性、不可逆）、L37（Contracts 1：'烧录/写保护/撤销不可逆'）、L38（Contracts 2：'须写保护，但不可读保护（软件校验需读取摘要；误开读保护会导致无法启动，基线高置信）'）、L96（Pitfall 3）；sb2-facts.md §1 '写保护/读保护'行原文一致。"
+        },
+        {
+          "assertion": "核对芯片事实：ESP32 rev 3.0+ 才支持 SBv2、RSA-3072 方案、ESP32 单摘要槽 vs C3 最多 3 槽",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L23（Preflight 1：'ESP32 经典款需 rev 3.0+ 才支持 SBv2（基线高置信）；C3 官方页描述 RSA-3072'）、L45-47（RSA-3072（RSA-PSS）；'摘要槽：ESP32 仅 1 个；C3 最多 3 个'）；sb2-facts.md §1（签名算法/摘要槽数两行）。"
+        },
+        {
+          "assertion": "若同时启用 Flash Encryption：提醒 Release 模式烧保护位后无法再明文烧录、新镜像只能经 OTA，需先确认 OTA 通道就绪（→ esp32-ota）；启用顺序先 SB 后 FE 并注明以官方 security 文档为准",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L24（Preflight 2：'没有 OTA 通道就启用 Release 加密 = 自断后路'）、L54（'Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA——启用前确认 OTA 通道可用（→ esp32-ota）'）、L60（'启用顺序：先 SB 后 FE（标注为官方推荐顺序；具体步骤以官方 security 文档为准，引用前运行时核验）'）、L78（Workflow step 1 'FE Release 前提 = OTA 通道就绪'）、L97（Pitfall 4）；sb2-facts.md §2 Release 行、§3。"
+        },
+        {
+          "assertion": "不写 ED25519 方案归属（UNVERIFIED），具体烧录命令标注运行时核验官方 security 文档",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L31（'ED25519 Secure Boot 方案归属：UNVERIFIED——本 Skill 与其下游一律不写'）、L98（Pitfall 5）、L25（Preflight 3：'具体烧录命令与工具链（espsecure 等）以官方 security 文档为准（运行时核验），本 Skill 不凭记忆给参数'）；sb2-facts.md §1（ED25519 行 'UNVERIFIED——禁止写入任何交付物'）、§4.4。"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "esp32-secureboot-03",
+      "routed_to": "esp32-secureboot",
+      "expected_skills": ["esp32-secureboot"],
+      "routing_match": true,
+      "verdict": "PASS",
+      "assertion_results": [
+        {
+          "assertion": "纠正：Development 模式明文串口烧录最多 3 次（FLASH_CRYPT_CNT 计数），不是无限刷",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L53（'Development 模式：明文串口烧录 ≤ 3 次（FLASH_CRYPT_CNT 计数）——开发期用第 3 次之前就该意识到节奏'）、L99（Pitfall 6：'不要把 3 次明文烧录当无限额度'）；references/sb2-facts.md §2 Development 行（'≤3 次（FLASH_CRYPT_CNT 计数）'，置信度高）。"
+        },
+        {
+          "assertion": "对比 Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA 进入设备",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L54（原文一致）、L24（Preflight 2）；sb2-facts.md §2 Release 行（'烧保护位后无法再明文烧录，新镜像只能经 OTA'）与'模式选择含义'行。"
+        },
+        {
+          "assertion": "给出纪律建议：开发期给明文烧录记账，留余量给必要验证；量产转 Release 前确认 OTA 通道（→ esp32-ota）",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L86（Validation Gate 1：'FE 开发模式烧录次数账本'）、L99（Pitfall 6：'留最后次数给真正需要的验证'）、L53（节奏提醒）、L54 与 L97（启用 Release 前确认 OTA 通道可用（→ esp32-ota））；sb2-facts.md §4.2（'FE 开发模式（记账 ≤3 次）'）。"
+        },
+        {
+          "assertion": "提醒 FE 密钥存 eFuse block1、烧录后写+读保护、软件不可读回",
+          "verdict": "PASS",
+          "evidence": "SKILL.md L40（Contracts 4：'FE 密钥不可读回：密钥存 eFuse block1，烧录后写+读保护，软件不可读回'）、L52（Flash Encryption 要点同文）；sb2-facts.md §2 '密钥存储'行（置信度高）。"
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "summary": {
+    "pass": 11,
+    "warn": 1,
+    "fail": 0
+  }
+}

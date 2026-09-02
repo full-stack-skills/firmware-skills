@@ -55,6 +55,7 @@ grep -m1 "CONFIG_IDF_TARGET" sdkconfig    # 芯片 target，与实物核对
 | User Intent | Skill |
 |---|---|
 | 工程骨架/构建烧写/分区表 | `esp32-idf` |
+| IDF 版本升级 / v5→v6 工程迁移 | `esp32-idf` |
 | 驱动任务与 ISR 并发模型 | `esp32-freertos` |
 | 采样异常定位后的崩溃取证 | `esp32-debug` |
 | 睡眠期间的引脚保持/功耗 | `esp32-lowpower` |
@@ -64,6 +65,7 @@ grep -m1 "CONFIG_IDF_TARGET" sdkconfig    # 芯片 target，与实物核对
 ## Workflow 1：接线与引脚分配
 
 1. 确认 target 与芯片实物一致（Preflight）。
+   - 引脚落点：核验后的引脚号必须**显式写入驱动初始化配置/参数**（或 menuconfig），不得留空交由默认值猜测。
 2. 打开该芯片 datasheet 的 IO MUX/引脚定义章节，列出候选引脚；记录哪些是 Strapping 引脚并避开。
 3. 对照板原理图确认引脚实际连接与上/下拉电阻现状。
 4. 把"引脚号 → 外设 → 电气条件"写成清单给用户确认，再写代码。

@@ -1,36 +1,44 @@
 [
-  {
-    "id": "esp32-idf-01",
-    "prompt": "我有个老项目是 ESP-IDF v5.2 写的，最近换了新电脑装了最新版 IDF，一编译就报一堆头文件找不到，还有 mqtt 的组件也缺，怎么回事？",
-    "expected_skills": ["esp32-idf"],
-    "assertions": [
-      "先运行时核验：idf.py --version 确认本机大版本，并指出项目锁定版本与本机版本需区分（三版本区分）",
-      "定位到 v5→v6 破坏性变更：v6.0 移除 legacy 驱动（ADC/I2S/Timer 等）、v6.1 将 esp-mqtt 移入组件管理器（idf.py add-dependency espressif/mqtt）",
-      "不凭记忆断言完整的被移除 API 清单，给出官方 Migration Guides + 本机构建日志的核验路径",
-      "给出确定性迁移步骤：存全量报错→逐类归因→逐类修复→每类单独重验提交",
-      "引用版本号（如 v6.1）时带'截至 2026-09-02'的日期化基线口径"
-    ]
-  },
-  {
-    "id": "esp32-idf-02",
-    "prompt": "帮我把 ESP-IDF 工程改成支持 OTA 升级的，听说要改分区表，直接把 esp_ota 的代码全给我写了吧。",
-    "expected_skills": ["esp32-idf", "esp32-ota"],
-    "assertions": [
-      "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
-      "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
-      "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
-      "不直接产出完整 OTA 实现代码，避免与 esp32-ota 职责重叠"
-    ]
-  },
-  {
-    "id": "esp32-idf-03",
-    "prompt": "新买的 ESP32-S3 板子，帮我从零建一个 ESP-IDF 工程并烧到板子上看串口日志。",
-    "expected_skills": ["esp32-idf"],
-    "assertions": [
-      "Preflight 先 idf.py --version 实测本机 IDF，并核对模组丝印/原理图与 esp32s3 target 一致",
-      "给出完整命令链：idf.py create-project → set-target esp32s3（说明会清 build 并重生成 sdkconfig，默认 target 是 esp32）→ build → flash -p PORT → monitor，可链式执行",
-      "menuconfig 决策与分区模板按需下沉到 references（menuconfig-decisions / partition-table-template）",
-      "烧写前确认串口设备与权限；无板上验证结果前标注 Build Verification Only，不声称'已可用'"
-    ]
-  }
+ {
+  "id": "esp32-idf-01",
+  "prompt": "我有个老项目是 ESP-IDF v5.2 写的，最近换了新电脑装了最新版 IDF，一编译就报一堆头文件找不到，还有 mqtt 的组件也缺，怎么回事？",
+  "expected_skills": [
+   "esp32-idf"
+  ],
+  "assertions": [
+   "先运行时核验：idf.py --version 确认本机大版本，并指出项目锁定版本与本机版本需区分（三版本区分）",
+   "定位到 v5→v6 破坏性变更：v6.0 移除 legacy 驱动（ADC/I2S/Timer 等）、v6.1 将 esp-mqtt 移入组件管理器（idf.py add-dependency espressif/mqtt）",
+   "不凭记忆断言完整的被移除 API 清单，给出官方 Migration Guides + 本机构建日志的核验路径",
+   "给出确定性迁移步骤：存全量报错→逐类归因→逐类修复→每类单独重验提交",
+   "引用版本号（如 v6.1）时带'截至 2026-09-02'的日期化基线口径"
+  ]
+ },
+ {
+  "id": "esp32-idf-02",
+  "prompt": "帮我把 ESP-IDF 工程改成支持 OTA 升级的，听说要改分区表，直接把 esp_ota 的代码全给我写了吧。",
+  "expected_skills": [
+   "esp32-ota",
+   "esp32-idf"
+  ],
+  "assertions": [
+   "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
+   "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
+   "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
+   "ESP-IDF 侧仅做工程层支撑，不越权产出 OTA 实现"
+  ],
+  "note": "2026-09-02 forward-test 修正：原 expected 首元素与包自路由规则矛盾（description 明示 OTA → esp32-ota），已重排并泛化断言"
+ },
+ {
+  "id": "esp32-idf-03",
+  "prompt": "新买的 ESP32-S3 板子，帮我从零建一个 ESP-IDF 工程并烧到板子上看串口日志。",
+  "expected_skills": [
+   "esp32-idf"
+  ],
+  "assertions": [
+   "Preflight 先 idf.py --version 实测本机 IDF，并核对模组丝印/原理图与 esp32s3 target 一致",
+   "给出完整命令链：idf.py create-project → set-target esp32s3（说明会清 build 并重生成 sdkconfig，默认 target 是 esp32）→ build → flash -p PORT → monitor，可链式执行",
+   "menuconfig 决策与分区模板按需下沉到 references（menuconfig-decisions / partition-table-template）",
+   "烧写前确认串口设备与权限；无板上验证结果前标注 Build Verification Only，不声称'已可用'"
+  ]
+ }
 ]

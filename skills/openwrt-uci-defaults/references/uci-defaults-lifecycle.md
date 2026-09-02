@@ -45,3 +45,11 @@ Facts an author must design around:
 ## Image interaction (conclusion)
 
 Scripts placed in the Image Builder overlay `files/etc/uci-defaults/` land verbatim in the image and execute on the first boot of the flashed device. Overlay packaging details are owned by `openwrt-image-build`; this skill relies only on the conclusion.
+
+## 常用首启项：系统时区
+
+```sh
+uci set system.@system[0].timezone='CST-8'
+uci set system.@system[0].zonename='Asia/Shanghai'
+```
+（时区串为 POSIX TZ 格式；各区域取值以 OpenWrt 官方 timezone 表为准，运行时核验。）

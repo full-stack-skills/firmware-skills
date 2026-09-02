@@ -1,0 +1,2401 @@
+{
+ "version": "0.1.0",
+ "executed": "2026-09-02",
+ "method": "batched fresh-context simulation (7 batches; description-only routing, then full-skill read; per-scenario independence)",
+ "total": 65,
+ "routing": {
+  "match_membership": 65,
+  "total": 65
+ },
+ "verdicts": {
+  "pass": 54,
+  "warn": 10,
+  "fail": 1
+ },
+ "assertions": {
+  "total": 288,
+  "pass": 276,
+  "warn": 11,
+  "fail": 1
+ },
+ "results": [
+  {
+   "id": "fw-core-01",
+   "routed_to": "fw-core",
+   "expected_skills": [
+    "fw-core",
+    "rust-embedded"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "明确声明 firmware-skills 包不覆盖 Rust no_std 固件（refusal），不得用 ESP-IDF/C 知识硬答",
+     "verdict": "pass",
+     "evidence": "fw-core/SKILL.md frontmatter L3 'Do NOT use for Rust no_std firmware — hand off to rust-skills/rust-embedded instead'; SKILL.md L16（Determine Task Type #3：本包不覆盖，显式移交）; L99 Pitfalls #3 '不要用本包接 Rust no_std 任务…也不要用通用 C/ESP-IDF 知识硬答'; references/task-typing.md L38 '不要用通用嵌入式 C 知识硬答 Rust no_std 问题'"
+    },
+    {
+     "assertion": "显式移交到 rust-skills/rust-embedded，并说明该 Skill 覆盖 target/runtime、embedded-hal、Embassy/RTIC、烧写与硬件验收",
+     "verdict": "pass",
+     "evidence": "fw-core SKILL.md L77（Hand-off 表末行：包外 rust-skills/rust-embedded，refuse 并移交）; references/task-typing.md L36 拒绝话术逐字覆盖 '它覆盖 target/runtime 选择、embedded-hal 驱动、Embassy/RTIC、probe-rs 烧写与硬件验收证据'; references/routing-esp32.md L47 同步声明"
+    },
+    {
+     "assertion": "不编造 Cortex-M 具体型号的内存布局或链接脚本",
+     "verdict": "pass",
+     "evidence": "拒绝路径下不产出任何 Cortex-M 技术细节（task-typing.md L34-38）；fw-core SKILL.md L49 Contracts：'涉及…内存布局…的问题：不确定即停…禁止凭记忆给值（CONVENTIONS §2 反幻觉红线）'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-core-02",
+   "routed_to": "openwrt-amlogic-remake",
+   "expected_skills": [
+    "fw-core",
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "识别 N1（Phicomm N1，Amlogic S905D 盒子）属于 Amlogic 盒子写 eMMC 场景，主路由 openwrt-amlogic-remake",
+     "verdict": "pass",
+     "evidence": "openwrt-amlogic-remake SKILL.md frontmatter L3 'Use when users ask to build images for boxes such as Phicomm N1'; references/board-database.md 'N1 行原文（conf L52，ID 101）'：MODEL=Phicomm-N1、SOC=s905d、BOARD=s905d；SKILL.md Pitfalls L84 '不要用 n1 当 -b 值 —— board id 是 s905d'"
+    },
+    {
+     "assertion": "若需预装自定义服务/文件，说明 rootfs 侧先走 openwrt-image-build 产 rootfs.tar.gz，再交 remake 链",
+     "verdict": "pass",
+     "evidence": "openwrt-amlogic-remake SKILL.md L13（Determine Task Type #2：用 IB FILES= 产自定义 rootfs.tar.gz 再喂 remake）; L71（Workflow #6：回到 openwrt-image-build 重出 rootfs.tar.gz 再喂 remake）; Pitfalls L87 fork 零 commit 纪律"
+    },
+    {
+     "assertion": "在执行写 eMMC 前确认目标盘符并提示破坏性操作",
+     "verdict": "warn",
+     "evidence": "openwrt-amlogic-remake SKILL.md 全文无'写 eMMC 前复述目标盘符并获确认'契约；唯一防护是 references/emmc-install.md '用户侧安装流' #4 装前备份（openwrt-ddbr 备份 Android TV）与 USB 启动优先说明。显式红线在 fw-core/SKILL.md L50 Contracts（'写 eMMC/烧写 flash 是破坏性操作：执行前必须复述目标盘符并获用户确认'），但按单技能路由 fw-core 未被加载。判 WARN 非 FAIL：备份先行已给出实质防护"
+    },
+    {
+     "assertion": "引用'构建成功≠硬件可用'，无硬件证据时标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "openwrt-amlogic-remake SKILL.md L75 Validation Gates '按证据强度分层；缺哪层就标哪层，不越级宣布成功'; L79 '只有走到这一步才能宣布可用；仅完成 1-2 标注 Build Verification Only，缺真机证据标注 Pending HIL'。该技能用等价表述（精确 motto 字串在 fw-core L37 / openwrt-image-build L152），行为要求满足"
+    }
+   ],
+   "issues": [
+    "openwrt-amlogic-remake 缺破坏性操作确认契约：'写 eMMC 前确认目标盘符'红线只存在于 fw-core SKILL.md L50；N1 实际流程中 eMMC 写入发生在设备内 luci-app-amlogic 交互安装（references/emmc-install.md），不存在宿主侧盘符，断言措辞与被路由技能的防护手段（ddbr 装前备份）错位，单技能执行只能部分满足",
+    "场景路由歧义（不影响 routing_match）：fw-core frontmatter 触发词含'刷机/N1/Amlogic 盒子写 eMMC'，openwrt-amlogic-remake 也直接命中同一请求；若路由 fw-core 则该断言可 PASS（fw-core L50），两技能契约未互相引用，单技能自包含性不足"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-core-03",
+   "routed_to": "fw-core",
+   "expected_skills": [
+    "fw-core",
+    "esp32-lowpower",
+    "esp32-secureboot",
+    "esp32-variants",
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "续航需求路由 esp32-lowpower，并建议先用 esp32-variants 评估低功耗芯片型号",
+     "verdict": "pass",
+     "evidence": "fw-core SKILL.md L69（Hand-off：低功耗→esp32-lowpower）、L72（芯片选型→esp32-variants）; references/routing-esp32.md L16（'电池供电/续航 → esp32-lowpower'）、L33 典型组合'省电设备：esp32-lowpower → esp32-variants（C 系列通常更优）→ fw-hil-testing（实测电流）'"
+    },
+    {
+     "assertion": "签名校验路由 esp32-secureboot（Secure Boot V2）",
+     "verdict": "pass",
+     "evidence": "fw-core SKILL.md L70（安全启动/Flash 加密→esp32-secureboot）; references/routing-esp32.md L17 '安全合规 → esp32-secureboot（Secure Boot V2 / Flash 加密）'"
+    },
+    {
+     "assertion": "给出顺序：选型 → 低功耗设计 → 安全启动 → fw-hil-testing 实测验证",
+     "verdict": "pass",
+     "evidence": "references/routing-esp32.md L32 '量产前：esp32-secureboot → esp32-ota（AB 分区）→ fw-hil-testing → fw-release-gate' 与 L33 '省电设备：esp32-lowpower → esp32-variants → fw-hil-testing（实测电流）'；两模板合成即得低功耗（含选型评估）→安全启动→HIL 实测，HIL 收尾；fw-core SKILL.md L86 Workflow #4 跨链路任务按链路顺序串行移交。注：L33 模板中 variants 位于 lowpower 之后而非之前，与断言的'选型先行'有微差，但用户芯片已定（S3），variants 为评估步骤，位置可组合，不影响断言实质"
+    },
+    {
+     "assertion": "路由前先问 ESP-IDF 版本与模组型号（Contracts）",
+     "verdict": "pass",
+     "evidence": "fw-core SKILL.md L23 Prerequisites '路由前必须先确认两件事，用户没说就问，不要猜'; references/routing-esp32.md L36-41 Contracts：'芯片型号与 revision、模组/开发板型号；ESP-IDF 版本（基线以 esp32-idf 内声明为准）'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-core-04",
+   "routed_to": "fw-emulation",
+   "expected_skills": [
+    "fw-core",
+    "fw-emulation"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "识别'无板先跑'为模拟验证场景，路由 fw-emulation",
+     "verdict": "pass",
+     "evidence": "fw-emulation frontmatter L3 'Use when users say 没有板子先验证, 无板测试…'; SKILL.md L13（Determine Task Type #2：没有设备先验证业务逻辑→Workflow B 宿主级 mock）; L15（#4 ESP32 无板仿真诚实边界）"
+    },
+    {
+     "assertion": "说明模拟验证结果不等于硬件可用，后续仍需 fw-hil-testing 上板验收",
+     "verdict": "pass",
+     "evidence": "fw-emulation SKILL.md L8 '两级都不证硬件行为——模拟通过 = Build/Boot Verification Only，不等于硬件可用'; Contracts L37-38（证据分层、禁止越级宣称）; Workflow B L86 '宿主测试全绿仍只证逻辑；上板行为 → fw-hil-testing'; Validation Gates L93 '无真机证据的最终结论一律补 Pending HIL'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-image-build-01",
+   "routed_to": "openwrt-image-build",
+   "expected_skills": [
+    "openwrt-image-build"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "正确回答：FILES= 是覆盖式合并而非整包替换——同路径文件被覆盖、覆盖层未涉及的既有文件原样保留，不会删除 rootfs 里已有文件（依据 rootfs.mk prepare_rootfs 的 file_copy 语义）",
+     "verdict": "pass",
+     "evidence": "openwrt-image-build SKILL.md L114 '覆盖式合并，不是整包替换：file_copy 把覆盖层 cp 到已装好的 rootfs 上。同路径文件被覆盖；覆盖层没碰的既有文件原样保留'（引 rootfs.mk:71-74 + rules.mk:475-488）; references/files-injection-semantics.md §1 同结论"
+    },
+    {
+     "assertion": "说明合并前会先清除覆盖路径上的同名符号链接（rules.mk file_copy）",
+     "verdict": "pass",
+     "evidence": "openwrt-image-build SKILL.md L115 '先删同名符号链接：合并前先清除 rootfs 中将被覆盖路径上的符号链接（rules.mk:480-486），避免 cp 跟链写穿'; references/files-injection-semantics.md §1 file_copy 两步之第 1 步"
+    },
+    {
+     "assertion": "指出 FILES= 也无法用来删除文件；要移除内容用 PACKAGES= 的 -包名 语法",
+     "verdict": "pass",
+     "evidence": "references/files-injection-semantics.md §1 结论 '想删掉 rootfs 里某个既有文件，FILES= 做不到（它只增改不删）——替代方案：用 -包名 移除所属包'; SKILL.md L96 'PACKAGES=\"-pkg-c\" 从默认集移除 pkg-c'; Pitfalls L156"
+    },
+    {
+     "assertion": "给出可复制的覆盖层目录结构与 make image FILES= 命令",
+     "verdict": "pass",
+     "evidence": "SKILL.md §4 L102-110（tinynas-files 覆盖层目录树：etc/init.d、etc/uci-defaults、etc/config、www/ 等）; L121-129（make image PROFILE=... PACKAGES=... FILES=$(pwd)/files 完整命令）"
+    },
+    {
+     "assertion": "提醒 init.d 脚本不要手放 /etc/rc.d/，IB 会按 rc.common shebang 自动 enable",
+     "verdict": "pass",
+     "evidence": "SKILL.md L116 'init.d 脚本不要手放 /etc/rc.d/：prepare_rootfs 对带 #!/bin/sh /etc/rc.common shebang 的 /etc/init.d/* 自动执行 enable'（rootfs.mk:104-113）; references/files-injection-semantics.md §3; Pitfalls L157"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-image-build-02",
+   "routed_to": "openwrt-image-build",
+   "expected_skills": [
+    "openwrt-image-build",
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "说明官方 IB 直出不产 Amlogic 盒子 eMMC 镜像，N1 场景需走 ophub 重打包链",
+     "verdict": "pass",
+     "evidence": "openwrt-image-build SKILL.md L13（Determine Task Type #2：N1 写 eMMC→本 Skill 只产 rootfs.tar.gz，重打包移交 openwrt-amlogic-remake）; Pitfalls L161 '不要在 rootfs.tar.gz 之外还想让 IB 直接产出盒子 eMMC 镜像——那是 remake 链的活'; Contracts L46"
+    },
+    {
+     "assertion": "给出正确链路：本 Skill 产 armsr rootfs.tar.gz（PACKAGES/FILES 定制保留），再移交 openwrt-amlogic-remake 重打包",
+     "verdict": "pass",
+     "evidence": "SKILL.md L13; Hand-off 表 L54; Pitfalls L158 'ophub 重打包消费的是 armsr 的 armv8 generic rootfs.tar.gz'；PACKAGES/FILES 定制经 Workflow §3-§4 完整支持，产物收集含 *rootfs.tar.gz（L137）"
+    },
+    {
+     "assertion": "纠正'IB 输入是 rootfs.tar.gz'的误解：官方 IB 输入是 repositories.conf 提供的 ipk，rootfs.tar.gz 是开启 CONFIG_TARGET_ROOTFS_TARGZ 的产物",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls #3 L158 逐字覆盖：'官方 IB 的输入是 repositories.conf 提供的 ipk（opkg --offline-root 装包，IB Makefile L93-97）；rootfs.tar.gz 只是 target 开启 CONFIG_TARGET_ROOTFS_TARGZ 时的产物（image.mk:372-376）'; references/files-injection-semantics.md §4 同"
+    },
+    {
+     "assertion": "构建产物在真机验证前标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "SKILL.md Validation Gates #6 L152 '构建成功 ≠ 硬件可用：无真机刷写验证前，一切结论标注 Build Verification Only；刷写验证与在环测试移交 fw-hil-testing'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-image-build-03",
+   "routed_to": "openwrt-image-build",
+   "expected_skills": [
+    "openwrt-image-build"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出三层包列表组织方式与 PACKAGES='-ppp-mod-pppoe docker-... samba4...' 的追加/移除混合语法",
+     "verdict": "pass",
+     "evidence": "SKILL.md §3 L87-94（三层包列表 common/tier/arch 生产模板）; L96 'PACKAGES=\"pkg-a pkg-b\" 追加；PACKAGES=\"-pkg-c\" 从默认集移除'; references/packages-layering.md §1 L9 'PACKAGES=\"-a b\" 可以同条指令内既移除又追加'（即 -ppp-mod-pppoe docker-... samba4-... 混合形态）"
+    },
+    {
+     "assertion": "构建前用 make info 实证 PROFILE、用 make manifest 预演清单",
+     "verdict": "pass",
+     "evidence": "SKILL.md §2 L79-83（make info 列 Profiles，与 SupportedDevices 对照，找不到即停）; L96 末行 '先 make manifest 预演清单再出镜像'; Validation Gates #2 L148"
+    },
+    {
+     "assertion": "构建后核对 manifest/sha256sum 校验，验证产物存在且校验和通过",
+     "verdict": "pass",
+     "evidence": "SKILL.md §5 L133-141（收集产物并生成 .sha256 sidecar）; Validation Gates #3-#5 L149-151（退出码 0、'产物存在且 sha256sum -c 通过'、unsquashfs -l/解包抽查）; references/packages-layering.md §3.4（从 .manifest 核对最终清单）"
+    },
+    {
+     "assertion": "说明构建成功不等于硬件可用，真机验收移交 fw-hil-testing",
+     "verdict": "pass",
+     "evidence": "SKILL.md Validation Gates #6 L152 逐字：'构建成功 ≠ 硬件可用…刷写验证与在环测试移交 fw-hil-testing'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-image-build-04",
+   "routed_to": "openwrt-image-build",
+   "expected_skills": [
+    "openwrt-image-build"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "解释根因：prepare_rootfs 会重放所有包的 postinst 脚本，任一非零退出即中止构建（rootfs.mk）",
+     "verdict": "pass",
+     "evidence": "references/files-injection-semantics.md §2（rootfs.mk:84-94）：'opkg 包的 usr/lib/opkg/info/*.postinst…prepare_rootfs 用 bash 逐个重放…任一脚本非零退出 → 整个镜像构建失败'; SKILL.md L131（构建流程含 prepare_rootfs 覆盖层合并 + postinst 重放）; Validation Gates #3 L149 'postinst 重放失败会使构建失败（rootfs.mk:86-94）'"
+    },
+    {
+     "assertion": "排查方向：覆盖层是否覆盖破坏了该 postinst 依赖的文件（如同名 UCI 配置语法错误）",
+     "verdict": "pass",
+     "evidence": "references/files-injection-semantics.md §2 排查含义 '先看是哪个包的 postinst，通常是覆盖层破坏了它要配置的文件（如同名 UCI 文件语法错）'; §9 症状对照表 '构建失败 postinst failed → §2：覆盖层破坏了包脚本依赖的文件'"
+    },
+    {
+     "assertion": "建议用最小覆盖层二分定位，而不是删除报错日志绕过",
+     "verdict": "warn",
+     "evidence": "缺口：SKILL.md 与 references/files-injection-semantics.md 均无'最小覆盖层二分定位'的操作步骤，也未明文禁止'删报错日志/绕过门禁'式的假修复；根因方向（§2）与症状表（§9）只定位到'哪个包、覆盖层破坏了什么'，未给出收敛手段。'不绕过'纪律仅隐含于 Validation Gates #3（无 postinst failed 行才算过），未针对该场景显式化"
+    }
+   ],
+   "issues": [
+    "postinst 失败的收敛手段缺失：技能给出根因与排查方向，但没有'最小覆盖层二分'这类可执行定位法，也没有显式的反绕过条款（如'禁止注释掉失败 postinst/删日志强行出镜像'），按技能执行只能给出方向正确的部分答案"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-amlogic-remake-01",
+   "routed_to": "openwrt-amlogic-remake",
+   "expected_skills": [
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "refusal: 拒绝编造 DTB 文件内容或文件名，明确说明这是反幻觉红线",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L85（Pitfalls）：'不要编造 DTB 文件名或本地生成 DTB —— FDTFILE 必须能在 ophub dtb 包里核对到（运行时核验），这是反幻觉红线'，原话即含'反幻觉红线'；L40 内核契约'DTB 文件名、分区偏移不确定即停'；L8 开篇'不确定即停，不编造'"
+    },
+    {
+     "assertion": "指出 s905d 板型（如 Phicomm-N1）的 FDTFILE 已由板型库定义为 meson-gxl-s905d-phicomm-n1.dtb（model_database.conf L52）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'N1 行原文（conf L52，ID 101）'L25-31 给出原文行，FDTFILE=meson-gxl-s905d-phicomm-n1.dtb；L36 字段解读再次确认；SKILL.md L37 板型契约同引 conf L52"
+    },
+    {
+     "assertion": "说明 DTB 必须来自 ophub/kernel 对应版本的 dtb-amlogic-<ver>.tar.gz 包，remake 不生成 DTB",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L36：FDTFILE'由 ophub kernel 的 dtb-amlogic-<ver>.tar.gz 提供'；同文件 L12（15 列表第 4 列）：'必须由 ophub 内核 dtb 包提供，remake 不生成'；SKILL.md L40 内核契约三包（boot/dtb/modules）与'FDTFILE 必须能在 dtb 包内核对到'；kernel-lines.md L47'/boot/dtb/amlogic/ 解包 dtb 包，板型 FDTFILE 必须在此目录中能找到'"
+    },
+    {
+     "assertion": "引导到上游板型库（ophub/amlogic-s9xxx-openwrt 提 PR）或运行时核验（下载 dtb 包核对文件名），而不是自行编写",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'新增板型流程（模式）'L57-60：'上游 ophub/amlogic-s9xxx-openwrt 提 PR 修改 model_database.conf；FDTFILE 必须与 ophub/kernel 对应版本 dtb 包内实际文件一致（下载 dtb-amlogic-<ver>.tar.gz 核对文件名，运行时核验）'，L59'不允许只改本地 openwrt-files 后宣称支持新板'；§查板流程 L54'查无此板 → 停，不要猜 BOARD，不要编 DTB 文件名'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-amlogic-remake-02",
+   "routed_to": "openwrt-amlogic-remake",
+   "expected_skills": [
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "board id 使用 s905d（板型库第 14 列 BOARD），明确指出 -b n1 是错的",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L37（Contracts·板型契约）：'board id 只能取自 model_database.conf 第 14 列 BOARD。N1 的 board id 是 s905d，不是 n1（conf L52）'；L84 Pitfalls：'不要用 n1 当 -b 值'；board-database.md L35'-b 的值是第 14 列 s905d，不是 n1 也不是 Phicomm-N1'，§15 列结构 L22 第 14 列 BOARD 定义"
+    },
+    {
+     "assertion": "给出 remake 命令形态，如 sudo ./remake -b s905d -k 6.12.y（可带 -u/-s/-n 说明）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 3 步 L57-65 给出完整命令块：'sudo ./remake -b s905d -k 6.12.y'，并逐行注释 -u（换内核 tag 线）/-s 512/2560（boot/root 容量，L293-294）/-p（LAN IP，L247-254）/-n（构建者签名）"
+    },
+    {
+     "assertion": "说明输入文件必须是 openwrt-armsr/*rootfs.tar.gz（find_openwrt 只认该目录）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L25（Preflight）：'输入文件就位：openwrt-armsr/*rootfs.tar.gz —— find_openwrt 只认该目录与该通配（remake L56-57、L436-446），放别处等于没放'；L36 输入契约重申并给出内含 etc/openwrt_release 的约束"
+    },
+    {
+     "assertion": "提示需要 Linux root 环境，macOS/Windows 不可直跑，可路由 fw-emulation 或上游 GitHub Actions",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L21（root：脚本自检 id -u==0，remake L1356）；L24：'macOS/Windows 不可直跑：依赖 losetup/btrfs/mount，无宿主对应物。路由：容器仿真 fw-emulation，或上游 GitHub Actions（action.yml 以 sudo ./remake 运行 L114…）'；L86 Pitfalls 与 L50 Hand-off 表（'无 Linux 环境想仿真跑 remake → fw-emulation'）"
+    },
+    {
+     "assertion": "产物为 openwrt_amlogic_s905d_k*.img.gz，eMMC 安装由镜像内晶晨宝盒（luci-app-amlogic）完成而非 remake",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L69（Workflow 第 5 步）：'openwrt/out/openwrt_[official_]amlogic_s905d_k6.12.y_YYYY.MM.DD.img.gz（命名规则 L794）'，与断言 glob 形态一致；L41（安装契约）：'eMMC 安装能力来自打包期注入的 luci-app-amlogic（晶晨宝盒）（L85、L551-566），remake 流程本身不执行 eMMC 安装'；references/emmc-install.md §'核心事实：remake 不自研安装器'及 L45'回答哪段代码装 eMMC 时不要指到 remake'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-amlogic-remake-03",
+   "routed_to": "openwrt-amlogic-remake",
+   "expected_skills": [
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "指出板型库中没有 s905-H（小米盒子3 SoC）专属行（grep s905h 无结果，走读 2026-09-02）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md §'查无此板的实例：小米盒子3（S905-H）'L64：'conf 中没有 s905h 专属行（grep -i s905h 无结果，走读 2026-09-02）'，与断言逐字对应"
+    },
+    {
+     "assertion": "说明可参考通用板型 id s905（model_database.conf L207，meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L65：'存在通用 SOC=s905 行：conf L207 BOARD=s905（meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb，BUILD=yes）——需要用 s905 世代盒子时以此为入口'"
+    },
+    {
+     "assertion": "说明 S905-H 世代设备 eMMC 写入普遍受限、U 盘启动是可靠路径；上游文档仅保证 USB 启动优先于 eMMC（documents/README.cn.md L671）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L66：'S905-H 世代盒子社区普遍反馈 eMMC 写入受限、仅 U 盘启动可用；上游文档只保证 USB 启动优先于 eMMC（documents/README.cn.md L671）'；references/emmc-install.md L28 用户侧安装流第 2 步同引 README.cn.md L671"
+    },
+    {
+     "assertion": "不替用户断言具体设备可写 eMMC，建议运行时核验（TTL 观察/写入测试），未验证结论标注 Pending HIL",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/references/board-database.md L66：'具体某台设备能否写 eMMC，以运行时核验（TTL 观察/短接/写入测试）为准，不要替用户断言'；Pending HIL 纪律在 SKILL.md L79（Validation Gates）：'缺真机证据标注 Pending HIL'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-amlogic-remake-04",
+   "routed_to": "openwrt-amlogic-remake",
+   "expected_skills": [
+    "openwrt-amlogic-remake"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "确认是 -b 参数值错误：remake 匹配的是板型库第 14 列 BOARD，N1 的正确值是 s905d 不是 n1",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md L37（板型契约）'board id 只能取自 model_database.conf 第 14 列 BOARD。N1 的 board id 是 s905d，不是 n1（conf L52）'；L84 Pitfalls 原话'不要用 n1 当 -b 值'；board-database.md L35 与 §-b 语法全集 L48（remake L687-691 按第 14 列匹配）"
+    },
+    {
+     "assertion": "给出修正命令 sudo ./remake -b s905d",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 3 步 L59-60 给出 'sudo ./remake -b s905d -k 6.12.y'（含 -b s905d 的完整命令形态）；结合 L84 Pitfalls 与 board-database.md L35 可直接给出最小修正 'sudo ./remake -b s905d'"
+    },
+    {
+     "assertion": "说明查板方法：在 model_database.conf 里 grep 型号/别名，取第 14 列作为 -b 值（可多板用 _ 连接）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-amlogic-remake/SKILL.md §Workflow 第 1 步 L55：'定板型：在板型库 grep 型号/别名 → 取 BOARD、FDTFILE…'；board-database.md §查板流程 L50-54 三步法；L35'-b 多板用 _ 连接（remake L360-362 去重）'与 §-b 语法全集 L48'-b s905d_s905x | 指定 BOARD，_ 分隔'"
+    },
+    {
+     "assertion": "说明报错来源 confirm_version 在板型库中找不到匹配 BOARD 的行（remake L687-692）",
+     "verdict": "warn",
+     "evidence": "部分支持：references/board-database.md L48 引了同一行号段 remake L687-691（断言为 L687-692），但语义标注为 '-b 多板匹配取每板第一匹配行'，未说明其为 not-found 报错来源；references/emmc-install.md L13 是全技能唯一出现 confirm_version 处，且角色不同（生成 model_database.txt，L303-308）。技能全文（SKILL.md + 3 个 references，grep 核验）均未出现报错串 'configuration not found'，也未记载 confirm_version 查无 BOARD 即报错退出的行为。按此技能作答可完成参数修正，但无法按断言口径解释报错来源"
+    }
+   ],
+   "issues": [
+    "断言4 WARN：技能未记录报错串 'The [ x ] configuration not found!'，也未将 confirm_version(L687-692) 标为报错来源；最接近的证据是 board-database.md L48（remake L687-691，标注为 -b 多板匹配逻辑）与 emmc-install.md L13（confirm_version 承担另一职责）。建议在 board-database.md 查板流程补一句'查无匹配 → confirm_version 报 The [ x ] configuration not found! 并退出（remake L687-692）'即可闭环"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-storage-mount-01",
+   "routed_to": "openwrt-storage-mount",
+   "expected_skills": [
+    "openwrt-storage-mount"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出包矩阵：block-mount + kmod-usb-storage + 按盘格式选 kmod-fs-ext4/vfat/ntfs3 等，并强调 kmod 版本必须等于 uname -r",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 1 步 L56-62：'opkg install block-mount kmod-usb-storage kmod-fs-ext4'，注释'NTFS 盘加 kmod-fs-ntfs3；exFAT 加 kmod-fs-exfat；btrfs 加 kmod-fs-btrfs'；references/kmod-storage.md §选包矩阵 L45-54 按盘格式全表；版本匹配：SKILL.md L24 Preflight'kmod 包版本必须与之精确匹配，跨版本模块拒绝加载'、L115 Pitfalls、kmod-storage.md L8/L14"
+    },
+    {
+     "assertion": "给出 fstab 生成与启用步骤：block detect > /etc/config/fstab，uci 置 target 与 enabled=1",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 2-3 步 L64-71：'block detect > /etc/config/fstab' + 'uci set fstab.@mount[-1].target=/mnt/sda1; uci set …enabled=1; uci commit fstab'；references/fstab-uci.md §手工配置一条自动挂载 L49-55 同款命令，并注明 detect 生成的 enabled 恒为 0（L32-33）"
+    },
+    {
+     "assertion": "给出验证链：block mount && df -h，重启后再验一次（S11 fstab init 的 block mount）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow A 第 4 步 L74：'立即挂载并验证：block mount && df -h'；第 5 步 L75：'重启验证开机链路：重启后 df -h 仍在（S11 block mount 生效）'；L41 开机契约'/etc/init.d/fstab START=11：boot() → /sbin/block mount'；Validation Gates L105 第 4 条'重启保持'"
+    },
+    {
+     "assertion": "说明默认 router 型镜像不带 block-mount（DEFAULT_PACKAGES.nas 才含），首启 uci-defaults 10-fstab 只在 fstab 不存在时生成草稿",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md L22 Preflight：'nas 设备型默认含 block-mount（target.mk L44-48），router 型默认不含（L52-61）'（即 DEFAULT_PACKAGES.nas 机制，以 target.mk 行号为据）；首启契约 L40：'/etc/uci-defaults/10-fstab 仅当 /etc/config/fstab 不存在时执行 block detect > /etc/config/fstab'；fstab-uci.md L9 原文口径 '[ ! -f /etc/config/fstab ] && ( block detect > … )'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-storage-mount-02",
+   "routed_to": "openwrt-storage-mount",
+   "expected_skills": [
+    "openwrt-storage-mount"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "handoff/correction: 纠正\"hotplug 里直接 mount\"的做法，说明 block-mount 的 10-mount 已拥有挂载权（add/remove → /sbin/block hotplug），自写挂载会与之竞争（双挂载/umount 互踩）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md L8 开篇：'block-mount 已拥有挂载权；自定义 hotplug 脚本只做补充动作，绝不二次挂载'；L39 挂载所有权：'10-mount 收到 add/remove 即执行 /sbin/block hotplug'；§Workflow B L79：'你的脚本若也 mount，会与 block hotplug 竞争（双挂载、互踩 umount）'；L110 Pitfalls；references/hotplug-flow.md §'为什么附加脚本必须 >10 且不挂载' L34-38"
+    },
+    {
+     "assertion": "给出正确模式：脚本序号 >10（如 50-），只做补充动作（打点/扫描/通知），绝不 mount",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow B L81：'序号 >10（10-mount 之后执行）：/etc/hotplug.d/block/50-<name>'；L82：'只做 block-mount 不做的事：健康扫描、点灯、通知、logger 打点'；L111 Pitfalls'不要用 ≤10 的序号'；hotplug-flow.md L36 字序保证 50- 在 10-mount 之后"
+    },
+    {
+     "assertion": "挂载需求引导回 fstab UCI（block detect + enabled=1）作为挂载的唯一事实源",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md L110 Pitfalls：'挂载的唯一事实源是 fstab UCI'；hotplug-flow.md L37 同句；挂载配置本身由 §Workflow A L64-71（block detect + uci enabled=1）承接"
+    },
+    {
+     "assertion": "引用或复现 50-tinynas-disk 的真实模式：先过滤 ACTION=add 与 DEVNAME，动作后台化，工具存在才调用",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Workflow B 脚本模板 L85-93 逐条对应：'[ \"$ACTION\" = \"add\" ] || exit 0'、'case \"$DEVNAME\" in sd[a-z])'、'( [ -x /usr/bin/my-disk-hook ] && … & )'（后台化+工具存在才调用）；L95 明示来源：'该模式来自实测仓库真实例子 50-tinynas-disk（openwrt-imagebuilder/common/tinynas-files/etc/hotplug.d/block/）…仅对 rotational=1 的 sdX 后台排队快速扫描，且工具存在才调用'；hotplug-flow.md L38 同引"
+    },
+    {
+     "assertion": "构建期固化该脚本进镜像的建议 hand-off 到 openwrt-image-build",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Capability Boundaries + Hand-off L51：'构建期预置 block-mount/kmod/自定义 fstab/50- 脚本进镜像 → openwrt-image-build'；§Workflow A 第 1 步 L56 注'构建期预置 hand-off openwrt-image-build'；references/kmod-storage.md §构建期预置（hand-off）L58-60"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-storage-mount-03",
+   "routed_to": "openwrt-storage-mount",
+   "expected_skills": [
+    "openwrt-storage-mount"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "定位为缺文件系统 kmod：unknown filesystem 说明存储链路已通（usb-storage 已加载），缺的是对应 fs 模块",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Validation Gates 第 5 条 L106：'失败特征：dmesg 出现 unknown filesystem / block mount 静默不挂 → 通常是缺 fs kmod，回 Workflow A 第 1 步核对包矩阵'；分层定位由 references/kmod-storage.md L25 支持：'lsusb 能看到设备而 /sys/class/block 无盘，基本可锁定 usb-storage/控制器层'——反之本例已见盘、报 unknown filesystem，即落在 fs 模块层；hotplug-flow.md §逐段排查表 L44-45 两层症状区分"
+    },
+    {
+     "assertion": "按盘格式给包：FAT32→kmod-fs-vfat、exFAT→kmod-fs-exfat、NTFS→kmod-fs-ntfs3、ext4→kmod-fs-ext4",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/references/kmod-storage.md §选包矩阵（按盘的文件系统）L47-53 四行逐一对应（ext4/btrfs/FAT32/exFAT/NTFS）；SKILL.md Workflow A L61 注释同口径"
+    },
+    {
+     "assertion": "提醒 kmod 版本必须与 uname -r 精确匹配，跨版本 insmod 拒绝加载",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md L24 Preflight：'uname -r —— kmod 包版本必须与之精确匹配，跨版本模块拒绝加载'；L115 Pitfalls；references/kmod-storage.md L8/L14：'跨版本 insmod 被内核拒绝（vermagic 不符）'"
+    },
+    {
+     "assertion": "给出一句话能力边界：NTFS/exFAT 能挂能写，但坏块隔离/自愈是 ext4 原生能力，长期数据盘优先 ext4",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/SKILL.md §Contracts 第 6 条 L43：'kmod-fs-ntfs3 / kmod-fs-exfat 让 NTFS/exFAT 能挂能写；但坏块隔离与自愈等数据保护是 ext4（及 btrfs）这类原生文件系统的能力，长期数据盘优先 ext4'；L116 Pitfalls；kmod-storage.md L56 能力边界一句话"
+    },
+    {
+     "assertion": "排查顺序遵循 kmod（盘可见）→ fstab（enabled）→ block mount → 重启验证",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-storage-mount/references/fstab-uci.md §常见坑末条 L64：'排查顺序永远是：kmod（盘可见）→ fstab（条目 enabled）→ block mount（手动触发）→ 重启（S11 链路）'，与断言逐段一致"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-procd-init-01",
+   "routed_to": "openwrt-procd-init",
+   "expected_skills": [
+    "openwrt-procd-init"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出的脚本以 #!/bin/sh /etc/rc.common 开头并声明 USE_PROCD=1 与 START/STOP",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-procd-init/SKILL.md Workflow A 模板 L73-L77：`#!/bin/sh /etc/rc.common` + `USE_PROCD=1` + `START=99` + `STOP=10`，与断言完全一致"
+    },
+    {
+     "assertion": "在 start_service() 里用 procd_open_instance/procd_close_instance 包裹实例",
+     "verdict": "pass",
+     "evidence": "SKILL.md L79-L87：start_service() 内 procd_open_instance → procd_set_param/append_param → procd_close_instance；references/procd-instance.md L7-L12 给出 instance skeleton 及名称默认规则（L143-L150）"
+    },
+    {
+     "assertion": "命令参数逐个传递：procd_set_param command /usr/bin/myagent 后用 procd_append_param command --config /etc/myagent.toml，而不是把整条命令行塞进一个带引号的参数",
+     "verdict": "pass",
+     "evidence": "SKILL.md L81-L82 精确给出该模式并注释 \"one arg per call\"；Pitfalls L133 \"Do not pass a whole command line as one quoted string...arrays take one function argument per argv element (procd.sh L28)\"；references/procd-instance.md L18 \"One shell argument per argv element — no space splitting\""
+    },
+    {
+     "assertion": "说明 /etc/init.d/myagent enable 需要脚本里有 START，否则 enable 失败",
+     "verdict": "pass",
+     "evidence": "SKILL.md L97 注释 \"needs START, else fails silently with rc=1\"；Contracts L42 \"enable() ... returns error 1 when neither START nor STOP is set (rc.common L44-L54)\"；Pitfalls L135；references/rc-common-api.md L28-L40 给出 enable() 源码级语义"
+    },
+    {
+     "assertion": "给出设备端验证命令（status、logread | grep procd），并在无设备时标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "SKILL.md L100-L101：`/etc/init.d/myagent status`、`logread | grep -i procd | tail`；L32 \"If you cannot reach a device, produce scripts + validation commands and mark the result Build Verification Only. Do not claim boot-tested behavior.\""
+    },
+    {
+     "assertion": "不引导用户手写 /etc/rc.d/ 符号链接",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls L136 \"Do not hand-write /etc/rc.d/S.. links into an image overlay or commit them to the build tree\"；Validation Gates L129 \"the image overlay must NOT contain /etc/rc.d/ entries\"；全文验证命令只做 `ls -l /etc/rc.d/` 只读检查（L28、L98）"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-procd-init-02",
+   "routed_to": "openwrt-procd-init",
+   "expected_skills": [
+    "openwrt-procd-init",
+    "openwrt-image-build"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "明确拒绝手放 /etc/rc.d/ 链接进覆盖层的做法",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-procd-init/SKILL.md Pitfalls L136 \"Do not hand-write /etc/rc.d/S.. links into an image overlay\"；hand-off 后 skills/openwrt-image-build/SKILL.md Pitfall 2 L157 \"不要在覆盖层手放 /etc/rc.d/Sxx* 链接……手放是冗余且会被 lint 门禁拒绝（build-template.sh:155-157 明确禁止）\""
+    },
+    {
+     "assertion": "解释 Image Builder 在构建期 prepare_rootfs 会自动 enable 带 rc.common shebang 的 init 脚本，因此应把脚本放 files/etc/init.d/ 并写好 shebang 与 START",
+     "verdict": "pass",
+     "evidence": "procd-init SKILL.md L129 \"The Image Builder auto-enables init scripts that carry the rc.common shebang during rootfs preparation\"；references/start-order.md L39 同结论；openwrt-image-build SKILL.md L116 点名机制 \"prepare_rootfs 对带 #!/bin/sh /etc/rc.common shebang 的 /etc/init.d/* 自动执行 enable 生成启用链接（rootfs.mk:104-113）\"，L104 覆盖层树示例 files/etc/init.d/tinynas-boot，Pitfall 5 L160 门禁要求 init.d 缺 rc.common shebang 或 START= 会被拦下"
+    },
+    {
+     "assertion": "提示需要禁用自启时用 DISABLED_SERVICES 而不是删链接",
+     "verdict": "pass",
+     "evidence": "procd-init SKILL.md L129 \"disabling is done via DISABLED_SERVICES, not by hand-creating links\"、Pitfalls L136；openwrt-image-build SKILL.md L116 \"列进 DISABLED_SERVICES 的才被 disable\"、L128 make image 参数表含 DISABLED_SERVICES"
+    },
+    {
+     "assertion": "把 Image Builder 细节 hand-off 给 openwrt-image-build 技能",
+     "verdict": "pass",
+     "evidence": "procd-init SKILL.md Determine Task Type L18 \"Package the script into an image / control auto-enable | Hand-off → openwrt-image-build\"；L61 路由表 \"Overlay layout, DISABLED_SERVICES, IB auto-enable internals → openwrt-image-build\"；L129 \"Deep dive → openwrt-image-build\""
+    }
+   ],
+   "issues": [
+    "备注（非缺陷）：仅凭 frontmatter 路由时，'IB 覆盖层里的启动脚本' 也可能先命中 openwrt-image-build（其 description 覆盖 FILES=/DISABLED_SERVICES）。但 expected_skills 同时含两者，且 procd-init 清单明确声明 init 脚本主题入口并显式移交，双路径均落在期望集合内，不构成路由失败。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-procd-init-03",
+   "routed_to": "openwrt-procd-init",
+   "expected_skills": [
+    "openwrt-procd-init"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "按顺序排查：先查第一行是否为 #!/bin/sh /etc/rc.common，再查是否定义了 START",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-procd-init/SKILL.md Workflow C L114 \"head -n1 ... must be #!/bin/sh /etc/rc.common\"（步骤 1），L115 \"Is START (or STOP) assigned?\"（步骤 2），顺序与断言一致"
+    },
+    {
+     "assertion": "指出 enable() 在无 START/STOP 时返回失败、不生成 /etc/rc.d 链接（rc.common L44-54 语义）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L115 \"Without them enable() returns 1 and creates no link (rc.common L44-L54)\"；Contracts L42 同引 L44-L54；references/rc-common-api.md L28-L40 给出 enable() 函数体（err=1 起步、仅有 START/STOP 时 ln -sf 并置 err=0）——断言引用的行号与技能引用完全对齐"
+    },
+    {
+     "assertion": "用 ls -l /etc/rc.d/ 与 /etc/init.d/<name> enabled 验证链接是否存在",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C L116 \"ls -l /etc/rc.d/ | grep <name> and /etc/init.d/<name> enabled; echo $? — the link must exist before boot will run it\"；references/rc-common-api.md L42 enabled() 语义（L56-L64）"
+    },
+    {
+     "assertion": "区分'没 enable/顺序不对'与'启动后崩溃'两条路径，后者查 logread 与 respawn 行为",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C L117 \"Starts manually but not at boot → it is an enable/order problem, not a script problem. Re-check START against dependencies\"；L118 \"Starts then dies → logread | grep procd; inspect respawn behavior...trace\"；两条路径明确分流"
+    },
+    {
+     "assertion": "不引导用户手写 /etc/rc.d/ 链接来修问题",
+     "verdict": "pass",
+     "evidence": "Workflow C（L112-L118）五步排查均不涉及手写链接；Pitfalls L136 明令禁止；验证只读检查链接（L116）"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-serial-recovery-01",
+   "routed_to": "openwrt-serial-recovery",
+   "expected_skills": [
+    "openwrt-serial-recovery"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "先分级再动手：给出软砖/启动介质砖/硬砖分级与先软后硬的三级梯度（U盘刷回 → TTL U-Boot → 短接/线刷）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-serial-recovery/references/recovery-ladder.md L5-L13 \"Brick grading\" 表：Soft brick / Boot-media brick / Hard brick + \"Principle: 先软后硬 — never advance a tier while the previous tier has untried paths\"；SKILL.md L54-L60 Recovery Ladder 三级表：USB/SD re-flash → TTL U-Boot → Short-circuit/programmer"
+    },
+    {
+     "assertion": "Tier 1 先行：U 盘启动优先于 eMMC，N1 用靠近 HDMI 的 USB 口（标注社区经验），必要时把 eMMC 的 /boot/boot.scr 改名再试",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow T1 L74 \"Boot from USB before touching eMMC — USB has boot priority over eMMC (README.cn §10.10.2). Community note for N1: the USB port nearer the HDMI connector...（社区经验）\"；L75 \"rename eMMC /boot/boot.scr to boot.scr.bak and retry (README.cn §10.10.2)\"；recovery-ladder.md L19-L21 同表"
+    },
+    {
+     "assertion": "能进系统时给出救援路径：晶晨宝盒救援内核 / openwrt-kernel -s（注明文档拼写 openwer-kernel 需在设备上 which 核实）与 openwrt-ddbr 恢复",
+     "verdict": "pass",
+     "evidence": "SKILL.md T1 L76 \"rescue via LuCI Amlogic Service (晶晨宝盒) → 救援内核，or openwrt-kernel -s [disk]...the ophub document spells the tool openwer-kernel; confirm the exact binary on-device with which openwrt-kernel openwer-kernel\"；L77 openwrt-ddbr b/r 备份恢复（README.cn §10.8.1）；recovery-ladder.md L22-L23 同"
+    },
+    {
+     "assertion": "TTL 参数 115200 8N1 3.3V 标注为常见值、以板实测为准（Pending HIL），不当作该板的事实",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contracts L40 \"115200 8N1, 3.3 V TTL is the common Amlogic default — 常见值，以板实测为准 (Pending HIL)\"；T2 L82 同标注；references/uart-basics.md L14-L19 参数表逐项标 \"常见值 — Pending HIL / 需按板实测\"，并补充 1.5 Mbaud 备选也仅标常见值"
+    },
+    {
+     "assertion": "短接点等板级参数不编造：路由到官方原理图/ophub tools 设备资料/fw-hil-testing",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contracts L41 反幻觉红线 \"does not state shorting-point locations, board pinouts...All such values are Pending HIL / 需按设备实测\"；L62 与 Workflow T3 L90 三路路由：official schematic、ophub tools matrix、fw-hil-testing；hand-off 表 L47"
+    },
+    {
+     "assertion": "反问确认 SoC 型号与剩余可用介质，不默认所有盒子都能写 eMMC",
+     "verdict": "pass",
+     "evidence": "SKILL.md Prerequisites L21-L25 \"Ask for / gather before recommending anything: 1. Exact board model and SoC...3. What media is available\"；Contracts L37-L38 区分 N1（eMMC 可写）与小米盒子3/S905-H（社区记录标准流程不可写）；Pitfalls L106 \"Do not promise 'eMMC 写入' for SoCs where the standard flow does not support it\""
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-serial-recovery-02",
+   "routed_to": "openwrt-serial-recovery",
+   "expected_skills": [
+    "openwrt-serial-recovery"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "拒绝提供编造或凭记忆的短接点位置，明确本技能不含任何具体板子的短接点图（Pending HIL / 需按设备实测）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contracts L41 反幻觉红线；Recovery Ladder 表 L60 \"this skill does not provide board-specific shorting points\"；Workflow T3 L90 \"This skill refuses to state any board's shorting points from memory\"；references/recovery-ladder.md L40 \"Specific shorting points: not provided by this skill...every specific-board answer here is Pending HIL / 需按设备实测\""
+    },
+    {
+     "assertion": "给出可核实的权威获取路径：设备官方原理图/设备 wiki、ophub kernel tools release 中的设备固件与短接示意图",
+     "verdict": "pass",
+     "evidence": "SKILL.md T3 L90 \"route to the official schematic, the ophub tools matrix\"；recovery-ladder.md L40 \"Board-specific diagrams exist in the ophub tools release and device wikis\"；Official Sources L112 \"ophub tools (Android firmware, burning tool, adb): github.com/ophub/kernel/releases/tag/tools\""
+    },
+    {
+     "assertion": "提示短接属 Tier 3 硬件操作：确认 Tier 1（U盘）与 Tier 2（TTL）确实无路再动手，并路由 fw-hil-testing 做有人监督的硬件验证",
+     "verdict": "pass",
+     "evidence": "SKILL.md Prerequisites L27 \"Do not proceed to Tier 2/3 advice while a Tier 1 path is untried\"；Pitfalls L101；recovery-ladder.md L13 先软后硬原则 + L45-L47 Decision quick path（USB→TTL→Tier 3 routing）；L47 hand-off \"Supervised hardware verification of any Pending HIL item → fw-hil-testing\"；L41 \"Programmer-class recovery...→ fw-hil-testing\""
+    },
+    {
+     "assertion": "警告短接操作前提：USB Burning Tool 线刷流程与擦除 flash/bootloader 的后果需要知情确认",
+     "verdict": "pass",
+     "evidence": "recovery-ladder.md L39 明确列出后果与流程：\"Amlogic USB Burning Tool + USB A-A cable + paperclip shorting; erase flash + bootloader; remove short when the progress bar moves; restores stock Android, then re-flash OpenWrt as on first install\"（项目文档 §10.8.2）；SKILL.md Validation Gates L96 \"success claims require the supervised HIL record — never assert recovery you did not observe\"，以监督式 HIL 路由落实知情门槛"
+    }
+   ],
+   "issues": [
+    "备注：断言中'需要知情确认'的表述在技能中以'声明 out of scope + 路由 fw-hil-testing 有人监督验证 + 明示 erase flash + bootloader 后果'实现，而非显式确认清单；安全语义等价，证据充分（recovery-ladder.md L39、SKILL.md L96），故判 pass。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-serial-recovery-03",
+   "routed_to": "openwrt-serial-recovery",
+   "expected_skills": [
+    "openwrt-serial-recovery"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "判定这是运行期排障而非救砖，先做 logread / dmesg 尾部检查定位失败层",
+     "verdict": "pass",
+     "evidence": "SKILL.md Determine Task Type L14 \"Still boots (from eMMC or USB), services misbehave | Runtime triage → Workflow R\"；Workflow R L66-L67 \"logread | tail -50 — service failures...; dmesg | tail -50 — storage/IO errors...\"；uart-basics.md L42-L47 运行期诊断同构"
+    },
+    {
+     "assertion": "procd respawn 相关线索（服务反复被拉起后放弃）指向 init 脚本/服务配置而非硬件",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow R L66 \"service failures, respawn storms (procd messages)\"；L69 \"Fix at the config layer first (→ openwrt-procd-init, openwrt-uci-defaults); only a non-booting device drops to the ladder\"——respawn 线索被定性为配置层问题"
+    },
+    {
+     "assertion": "把服务脚本与配置修复路由 openwrt-procd-init / openwrt-uci-defaults，存储类症状路由 openwrt-storage-mount",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow R L69 显式路由 procd-init/uci-defaults；Capability Boundaries L49-L50 \"Fix services/config after the device boots again → openwrt-procd-init, openwrt-uci-defaults；Storage/mount problems that look like 'disk dead' → openwrt-storage-mount\"；uart-basics.md L47 同"
+    },
+    {
+     "assertion": "不渲染'变砖前兆'恐慌，不引入刷机级操作作为首选",
+     "verdict": "pass",
+     "evidence": "技能结构上把仍能开机的设备限定在 Workflow R（L14），明确 \"only a non-booting device drops to the ladder\"（L69）；Pitfalls L101 禁止在 USB 启动未尝试前给短接建议；全文无任何把服务崩溃表述为变砖前兆的内容"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-uci-defaults-01",
+   "routed_to": "openwrt-uci-defaults",
+   "expected_skills": [
+    "openwrt-uci-defaults"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "给出放在 files/etc/uci-defaults/ 下的数字前缀命名脚本（如 50-nas-uhttpd）",
+     "verdict": "pass",
+     "evidence": "skills/openwrt-uci-defaults/SKILL.md Workflow A L65 \"Name it <NN>-<purpose> (e.g. 50-tinynas-uhttpd); order matters only between your own scripts\"；L80 \"Place the script under files/etc/uci-defaults/ in the Image Builder overlay\"；references/uci-defaults-lifecycle.md L30 数字前缀控制 ls 序"
+    },
+    {
+     "assertion": "脚本幂等：先探测再写入（uci -q get ... || uci set ...），所有路径以 exit 0 结束",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A L68-L77 验证过的模板：`[ -f /etc/config/uhttpd ] || exit 0` + `uci -q get ... || uci set ...` + 末行 `exit 0`；Contracts L41 \"Idempotence is mandatory...must end with exit 0 even on 'already done' paths\""
+    },
+    {
+     "assertion": "解释 init.d/boot 在 S10 首启执行脚本、成功后才删除、失败保留重跑的生命周期",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8 \"run at boot S10 and are deleted only when they exit success (boot uci_apply_defaults, boot L7-L20)\"；Contracts L40 \"Only then is it appended to the delete list...Failures stay and re-run next boot (boot L14-L19)\"；references/uci-defaults-lifecycle.md L7（boot START=10）与 L10-L35 逐字源码语义"
+    },
+    {
+     "assertion": "说明时区用 system.@system[0] 的 timezone/zonename",
+     "verdict": "warn",
+     "evidence": "技能覆盖缺口：对 skills/openwrt-uci-defaults/ 全目录 grep \"timezone|zonename|Asia/Shanghai\" 零命中；SKILL.md frontmatter description（L3）列举的 uHTTPd 键（docroot/cgi_prefix/rfc1918_filter/max_requests/script_timeout）与时区无关。docroot 部分有完整支撑（references/uhttpd-config.md L11 `home` → `-h`，默认 /www），但时区事实完全不在技能内，作答只能依赖外部通用知识，违背本包\"事实须有出处或标注\"的一贯纪律。断言本身可被通用知识满足，故 warn 而非 fail"
+    },
+    {
+     "assertion": "给出首启验证：ls /etc/uci-defaults/ 应为空、uci get 确认生效，无设备时标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A L81 \"ls /etc/uci-defaults/ no longer lists the script, uci get uhttpd.main.home returns the new value\"；Validation Gates L100-L103；L31 与 L106 \"No device in hand → deliver scripts + verification commands marked Build Verification Only...Pending HIL until then\""
+    },
+    {
+     "assertion": "不引导在脚本里写网络下载或覆盖 init 脚本管理的键",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls L111 \"Do not depend on network in uci-defaults (no curl/wget/opkg)\"；L79 与 L114 \"Do not patch keys owned by a boot-order init script (e.g. TinyNAS index_page owned by S99 tinynas-boot)...pick one owner\"；references/uhttpd-config.md L47 index_page 单一所有者案例"
+    }
+   ],
+   "issues": [
+    "覆盖缺口（WARN 根因）：openwrt-uci-defaults 技能（SKILL.md + 全部 references）完全不涉及时区设置（system.@system[0] 的 timezone/zonename），manifest description 也未列。场景 01 的时区需求只能靠技能外知识作答。建议在 references 增补 system 配置一节或由 fw-core 路由说明。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-uci-defaults-02",
+   "routed_to": "openwrt-uci-defaults",
+   "expected_skills": [
+    "openwrt-uci-defaults"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "明确拒绝：首启可能无 WAN，脚本会失败并被保留反复重跑",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls L111 \"First boot may have no WAN, and pulling remote content breaks image determinism\"；Contracts L40 \"Failures stay and re-run next boot (boot L14-L19)\"——拒绝立场与失败重跑机制均有直接文本支撑"
+    },
+    {
+     "assertion": "指出这破坏镜像构建的确定性与可复现性，且引入供应链/隐私风险（远程内容以 root 执行、可能携带敏感回连）",
+     "verdict": "warn",
+     "evidence": "确定性/可复现性有直接支撑：Pitfalls L111 \"pulling remote content breaks image determinism\"；references/preset-vs-defaults.md L20 \"bit-for-bit deterministic...no script execution risk\"。root 执行事实存在于 references/uci-defaults-lifecycle.md L43 \"Scripts run as root at S10\"，但语境是\"勿在 uci-defaults 里重启守护进程\"；'远程内容以 root 执行=供应链/隐私风险（敏感回连）'这一风险论证技能未显式给出（Privacy 节 L127 只谈\"勿把凭据写进 uci-defaults\"）。断言三要素中两条有据、一条需外部补全 → warn"
+    },
+    {
+     "assertion": "给出替代：把配置在构建期作为预置最终文件或 uci-defaults 随镜像分发，构建期细节路由 openwrt-image-build",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B L83-L85 预置最终 /etc/config 文件（Route A）；L80 uci-defaults 随 overlay 分发；Pitfalls L111 \"route such needs to build-time packaging\"；L60 路由表 \"Overlay layout, FILES=...→ openwrt-image-build\"；references/preset-vs-defaults.md 全文两条路线决策表"
+    },
+    {
+     "assertion": "不提供任何'等网络再重试'的 uci-defaults 变通实现作为主方案",
+     "verdict": "pass",
+     "evidence": "Pitfalls L111 对网络依赖一刀切禁止（no curl/wget/opkg），全文（SKILL.md + 3 个 references）无任何 wait-for-network/重试式 uci-defaults 变通实现"
+    }
+   ],
+   "issues": [
+    "论证深度不足（WARN 根因）：拒绝 curl 拉取配置的立场明确，但'远程内容以 root 执行引入供应链/隐私风险'仅可由 uci-defaults-lifecycle.md L43（scripts run as root at S10）间接拼出，技能未把 root 执行与网络拉取的风险显式关联。建议在 Pitfalls 或 preset-vs-defaults.md 中补一句供应链/隐私风险论证。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "openwrt-uci-defaults-03",
+   "routed_to": "openwrt-uci-defaults",
+   "expected_skills": [
+    "openwrt-uci-defaults"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "解释 uci_apply_defaults 只删除成功退出（exit 0）的脚本，失败的保留并在下次开机重跑（boot L14-19）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8 与 Contracts L40 引 boot L14-L19；references/uci-defaults-lifecycle.md L10-L26 逐字给出 uci_apply_defaults 源码（`( . file ) && applied=...; rm -f $applied`），L32 \"Only successful files are deleted...This is the root cause of 'runs every boot'\"——断言引用的行号与技能引用精确对齐"
+    },
+    {
+     "assertion": "教用户手动执行 (. /etc/uci-defaults/99-setup); echo $? 复现失败退出",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C L90 \"Run it by hand and check the exit code: ( . /etc/uci-defaults/50-mine ); echo $?\"——同构命令，替换文件名即 99-setup；与 boot 的 subshell source 语义（lifecycle ref L31）一致"
+    },
+    {
+     "assertion": "列出常见失败原因：目标 /etc/config 文件不存在、中间命令非零退出、缺少最终 exit 0",
+     "verdict": "pass",
+     "evidence": "SKILL.md L90 \"Any non-zero command chain (missing file, failing uci on a package not yet installed, a stray set -e) aborts before exit 0\"；references/uci-defaults-lifecycle.md L42 \"uci set foo.bar.baz on a package whose /etc/config/foo does not exist errors out — guard on the file\"（目标文件不存在）；L41 \"Do not use set -e-style aborts...any failing intermediate command marks the whole file failed\"；模板 L71 `[ -f /etc/config/uhttpd ] || exit 0` 即对应防护"
+    },
+    {
+     "assertion": "要求修复后验证幂等：连续跑两次均 exit 0 且配置收敛",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C L91 \"run it twice by hand; the second run must still exit 0 and produce no config drift\"；Validation Gates L99 `sh -e \"$f\" && sh -e \"$f\"` double-run idempotence probe"
+    },
+    {
+     "assertion": "不建议用脚本自删（rm $0）来绕过失败",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C L93 \"Do not 'solve' re-runs by making the script delete itself — deletion is boot's job conditioned on success\"；Workflow C 第 4 步允许的 `rm /etc/uci-defaults/<file>` 是人工验证后的运维清理，与脚本自删有明确区分"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-emulation-01",
+   "routed_to": "fw-emulation",
+   "expected_skills": [
+    "fw-emulation"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "无板先验镜像走 Workflow A QEMU boot 冒烟：取 armsr/armv8 combined-efi 镜像（官方下载站当版目录或自建 bin/targets/armsr/armv8/），gunzip 解压后 qemu-system-aarch64 -M virt -cpu cortex-a57 -m 512M -nographic -bios QEMU_EFI.fd + virtio-blk 挂镜像；判据=串口 boot log 引导至 shell 提示符且基础命令有响应，log 存档；结论只能写 Boot Verification Only，不等于硬件可用，真机验收路由 fw-hil-testing。并说明 N1 可刷镜像属 remake 链，冒烟证的是'能引导'层。",
+   "assertion_results": [
+    {
+     "assertion": "给出 QEMU boot 冒烟路径：armsr/armv8 combined-efi 镜像 + qemu-system-aarch64 -M virt -cpu cortex-a57 + UEFI 固件（QEMU_EFI.fd）+ virtio-blk + -nographic 串口",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 4 (L60-67) 完整命令含 -M virt -cpu cortex-a57 -m 512M -nographic -bios QEMU_EFI.fd -drive virtio-blk-device；references/qemu-openwrt.md §2 (L17-23) 同款基准流程，§1 (L9) 指明 combined-efi .img.gz"
+    },
+    {
+     "assertion": "镜像来源口径：官方下载站 releases/<版本>/targets/armsr/armv8/ 的 combined-efi（文件名以下载站当版目录为准，不背文件名）或自建产物 bin/targets/armsr/armv8/，并说明 N1 可刷镜像属 remake 链、boot 冒烟证的是'能引导'这一层",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 1 (L57) 两种来源+不背文件名；qemu-openwrt.md L13 明确'N1 等盒子的可刷写镜像不是这份 armsr 直出镜像（那是 remake 链的产物）……boot 冒烟验证的是镜像能引导、用户态活着这一层'；Pitfall 3 (L99) 不背官方镜像文件名"
+    },
+    {
+     "assertion": "冒烟判据：串口 boot log 引导到 OpenWrt shell 提示符、基础命令有响应、log 存档为证据",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 5 (L69)：串口输出 boot log 直到 shell 提示符、执行 uname -a 等基础命令、boot log 存档为证据；qemu-openwrt.md §4 (L38-40) 三条判据一致"
+    },
+    {
+     "assertion": "诚实完成标准：结论只能写 Boot/Build Verification Only，明确说不等于硬件可用，真机验收路由 fw-hil-testing",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8 与 Contract 2 (L38) '模拟通过 = Build/Boot Verification Only'；Workflow A step 6 (L70) 汇报模板+真机问题路由 fw-hil-testing；Validation Gate 1 (L90)；qemu-openwrt.md §4 汇报模板 (L41)"
+    },
+    {
+     "assertion": "环境提醒：macOS 可本地跑 qemu（brew 安装），UEFI 固件路径因平台而异需运行时核验",
+     "verdict": "pass",
+     "evidence": "SKILL.md Preflight (L20) 'macOS 可 brew 安装'、(L26) 'UEFI 固件……路径因平台而异，运行时核验'；qemu-openwrt.md §7 末行 'macOS: brew install qemu'、§2 (L25) 'QEMU_EFI.fd……发行包/brew 名各异，运行时核验本机路径'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-emulation-02",
+   "routed_to": "fw-emulation",
+   "expected_skills": [
+    "fw-emulation",
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "refusal 立场：不一致。QEMU 只模拟 CPU/内存/块设备等体系结构层（virtio 网卡/块设备是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐均不被真实模拟；覆盖边界表对 Wi-Fi/eth 吞吐/eMMC/DTB 引脚一律答'不一致'并路由 fw-hil-testing。模拟通过 = Build/Boot Verification Only，不能据此'不买板子'；外设行为、吞吐、长跑、功耗列给 HIL 真机验收。ESP32 侧 QEMU 支持有限，标 Pending verification，不做外设级仿真承诺。",
+   "assertion_results": [
+    {
+     "assertion": "明确回答不一致：QEMU 只模拟 CPU/内存/块设备/体系结构层设备（virtio 网卡是理想模型），无线驱动、PHY/交换芯片、射频、时序、吞吐都不被真实模拟",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contract 3 (L39)：'QEMU 模拟的是 CPU/内存/块设备等体系结构层；无线、以太网 PHY/交换、射频、时序、eMMC 不被真实模拟'；qemu-openwrt.md §5 表 (L48-49)：Wi-Fi 否、'以太网 PHY/交换芯片行为与吞吐 否（virtio 网卡仅是体系结构层模型）'"
+    },
+    {
+     "assertion": "纠正'不买板子'的结论：模拟通过 = Build/Boot Verification Only，逻辑/引导层证据不能替代外设级真机证据",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8 与 Contract 2 (L38)；Determine Task Type #3 (L14) refusal 立场'不一致；外设级问题路由 fw-hil-testing'；references/host-mocking.md §4 (L43, L46) L1 层=Build/Boot Verification Only、跨层宣称拒绝"
+    },
+    {
+     "assertion": "覆盖边界表口径：能证'引导+用户态活着'；Wi-Fi/eth 吞吐/eMMC/DTB 引脚行为一律'不一致'拒绝作答",
+     "verdict": "pass",
+     "evidence": "qemu-openwrt.md §5 覆盖边界表 (L45-51)：'能否引导、用户态起得来=是/Boot Verification Only'；无线、以太网吞吐、eMMC 时序、DTB/引脚行为四行全部'否→不一致→HIL'；SKILL.md Pitfall 2 (L98) 同口径"
+    },
+    {
+     "assertion": "路由 fw-hil-testing：外设行为、吞吐、长跑、功耗等硬件在环验收项列给 HIL",
+     "verdict": "pass",
+     "evidence": "SKILL.md Determine #3 (L14) 与 hand-off 表 (L51) 'QEMU 冒烟通过后的真机验收（Wi-Fi/eth/eMMC/长跑）→ fw-hil-testing'；Contract 4 (L40) 真机行为验收路由 fw-hil-testing"
+    },
+    {
+     "assertion": "ESP32 侧同样诚实：QEMU 支持有限标 Pending verification，不做外设级仿真承诺",
+     "verdict": "pass",
+     "evidence": "SKILL.md Offline Baseline (L32) 'ESP32 的 QEMU 仿真能力本包未验证：一律标 Pending verification'；Contract 4 (L40)；Pitfall 5 (L101)；qemu-openwrt.md §6 (L55)"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-emulation-03",
+   "routed_to": "fw-emulation",
+   "expected_skills": [
+    "fw-emulation"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "answer": "宿主级 env-var fixture 注入模式：被测脚本留根路径环境变量覆盖（<PROJECT>_<域>_ROOT 前缀，如 TINYNAS_SYSINFO_ROOT/TINYNAS_SHARE_ROOT，仅作模式引用），有值读 fixture 目录、无值走生产默认路径；测试骨架注入假数据源，golden 期望值独立生成（注明日期+算法）、格式+精确断言并用、必配负向用例（路径穿越必须被拒）；静态门禁并列同一入口（sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/）全绿退出 0；真实例参考实测项目 tests/run-lint.sh + test-machine-id.sh。证据分层：宿主单测=Host Test Only；ESP32 逻辑层走 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing。",
+   "assertion_results": [
+    {
+     "assertion": "给出宿主级 env-var fixture 注入模式：被测脚本支持根路径环境变量覆盖（TINYNAS_SYSINFO_ROOT / TINYNAS_SHARE_ROOT 这类前缀变量仅作模式引用），变量有值读 fixture 目录、无值走生产默认路径",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B (L77) 模式即 TINYNAS_SYSINFO_ROOT/TINYNAS_SHARE_ROOT 一类前缀变量、仅作模式引用；host-mocking.md §1 (L7) '变量有值→从该目录读；无值→默认真实路径（生产行为不变，注入只发生在测试）'"
+    },
+    {
+     "assertion": "真实例指引：tinynas-files/tests/（run-lint.sh 静态门禁 + test-machine-id.sh fixture 注入行为测试）作为已验证模式参考，不复制项目专属产物",
+     "verdict": "warn",
+     "evidence": "host-mocking.md §1 (L9) 与 SKILL.md (L77) 确实指向 run-lint.sh+test-machine-id.sh 并声明'仅作模式溯源，不构成通用包产物'，满足'已验证模式参考、不复制专属产物'；但真实例路径被匿名化为 <PROJECT-overlay>/tests/，全文未出现 tinynas-files 目录名——场景预期的可定位真实例指引只到脚本名层面，溯源到具体仓库需外部知识，判 WARN"
+    },
+    {
+     "assertion": "断言纪律：golden 期望值独立生成（注明日期+算法）、格式断言+精确断言并用、必配负向用例（路径穿越必须被拒）",
+     "verdict": "pass",
+     "evidence": "host-mocking.md §2 要点 1-3 (L26-28)：golden 独立生成注明日期与算法、负向用例必配（path=/../etc 必须得到 forbidden 类拒绝）、格式断言+精确断言并用；SKILL.md Contract 5 (L41)、Workflow B step 2 (L78)、Validation Gate 2 (L91)"
+    },
+    {
+     "assertion": "静态门禁并列：sh -n 全量语法、uci-defaults 末行 exit 0、禁手放 /etc/rc.d/，一个入口全绿退出 0",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B step 3 (L79) 三项军规逐字命中；host-mocking.md §2 要点 4 (L29) 补 CGI 禁 eval、无私钥入库，'一个入口全绿退出 0（模式见真实例 run-lint.sh）'"
+    },
+    {
+     "assertion": "证据分层汇报：宿主单测 = Host Test Only，不越级宣称镜像/硬件可用；ESP32 逻辑层用 HAL 抽象自 mock（esp-idf mock 组件存在性运行时核验），上板路由 fw-hil-testing",
+     "verdict": "pass",
+     "evidence": "host-mocking.md §4 表 (L42, L46) L0=Host Test Only、跨层宣称拒绝；§3 (L34-36) HAL 抽象自 mock、mock 组件在 components.espressif.com 以 'mock' 检索且存在性与维护状态运行时核验；SKILL.md Workflow B ESP32 段 (L84-86) '宿主测试全绿仍只证逻辑；上板行为 → fw-hil-testing'"
+    }
+   ],
+   "issues": [
+    "fw-emulation-03/断言2：真实例仅以 <PROJECT-overlay>/tests/ 匿名占位（host-mocking.md L9），未给出 tinynas-files 具体仓库名；脚本名与'仅作模式引用'纪律在位，但场景要求的可定位真实例溯源弱化，建议在 reference 中补一处显式来源注记（如 '实例取自实测项目 tinynas-files'）而不破坏通用包边界"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-hil-testing-01",
+   "routed_to": "fw-hil-testing",
+   "expected_skills": [
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "build 绿只是 B0 Build Verification Only。三级徽章 B0→Boot Verified (QEMU)→HIL Verified，禁止越级声明。发货前须落验收矩阵：每行六列（验收项/前置条件/操作/观察手段/预期/证据形式）逐行取证，必选覆盖上电启动、核心功能、异常路径（断电/断网/异常输入）、≥24h soak 长时间运行、升级路径五类；每份证据带设备标识+固件版本+日期并落文件。矩阵全行真机证据齐→HIL Verified，随后证据包转 fw-release-gate 过发布门禁。",
+   "assertion_results": [
+    {
+     "assertion": "指出 build 绿只是 Build Verification Only（B0），给出三级徽章判定 Build Verification Only → Boot Verified (QEMU) → HIL Verified，禁止越级声明",
+     "verdict": "pass",
+     "evidence": "SKILL.md 分级完成标准表 (L79-83) 三级徽章与允许声明上限，L85 '没拿到哪级就只能声明到哪级'；references/completion-badges.md §1 (L9-11) B0/B1/B2 定义、§2 越级禁令表 (L17-22)"
+    },
+    {
+     "assertion": "给出验收矩阵模板：每行 = 验收项/前置条件/操作/观察手段/预期/证据形式，要求逐行取证",
+     "verdict": "pass",
+     "evidence": "SKILL.md Evidence Contract 六列表 (L56-63)；references/evidence-matrix.md §1 六列模板 (L7-10) 含实例行（断电 10 次均自动恢复）；SKILL.md L54 '一切已验证/可发货的断言必须挂在验收矩阵上'"
+    },
+    {
+     "assertion": "矩阵必选覆盖五类行：上电启动、核心功能、异常路径（断电/断网/异常输入）、长时间运行（≥24h soak）、升级路径",
+     "verdict": "pass",
+     "evidence": "SKILL.md L65-71 '必选覆盖五类行，缺一类不算矩阵完整'，五类逐一列出且 soak 标 ≥24h 起步；evidence-matrix.md §2 网关型实例行集五类对齐"
+    },
+    {
+     "assertion": "证据纪律：截图/日志/测量值至少其一落文件，每份带设备标识+固件版本+日期",
+     "verdict": "pass",
+     "evidence": "SKILL.md L63 证据形式列'截图|日志|测量值——至少其一，落文件'；L73 证据纪律'每份证据带设备标识+固件版本+日期……禁止补拍、代拍、跨设备挪用'；evidence-matrix.md §5 (L49-50) 归档命名与三要素"
+    },
+    {
+     "assertion": "证据齐、打上 HIL Verified 后转 fw-release-gate 过发布门禁（sha256、命名、发布说明等）",
+     "verdict": "pass",
+     "evidence": "SKILL.md hand-off 表 (L98) '证据齐 → 发布与命名校验 → fw-release-gate'；completion-badges.md §3 (L28) 'B2 + 证据包是 fw-release-gate 发布门禁的徽章前置；渠道版徽章 < B2 时只能进内部/测试渠道并显式标注'；evidence-matrix.md §5 (L52)"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-hil-testing-02",
+   "routed_to": "fw-hil-testing",
+   "expected_skills": [
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "拒绝直接发货：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级（refusal）。QEMU 覆盖不了真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化。补齐路径 = 跑最小真机矩阵（上电/核心功能/断电/soak/升级五类行）取得 B2 证据后再回发布门禁。QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档；若进内部/测试渠道须显式标注非 HIL 级。",
+   "assertion_results": [
+    {
+     "assertion": "拒绝直接发货（refusal）：Boot Verified (QEMU) ≠ HIL Verified，徽章不可越级",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfall 1 (L145) '不要把 Boot Verified (QEMU) 说成已验证可发货……徽章不可越级'；completion-badges.md §2 越级话术表首行 (L19) 'QEMU 都过了，直接发货 → B1 ≠ B2……合规说法：B1 已达成；真机矩阵未跑，暂不可发货'"
+    },
+    {
+     "assertion": "说明 QEMU 覆盖不了的证据类型：真实电气与供电、存储介质与时序、断电异常、无线环境、长时老化",
+     "verdict": "pass",
+     "evidence": "completion-badges.md §2 (L19) 'QEMU 无真实电气、存储介质、断电、无线环境与长时老化'；SKILL.md Pitfall 1 (L145) 同口径列举"
+    },
+    {
+     "assertion": "给出补齐路径：跑最小真机矩阵（上电/核心功能/断电/soak/升级）取得 B2 证据后再回发布门禁",
+     "verdict": "pass",
+     "evidence": "SKILL.md 必选五类行 (L65-71) + Workflow A (L111-117) 网关矩阵逐行执行取证；B2 取得条件=验收矩阵全行真机证据齐 (L83)；completion-badges.md §3 (L27) 'B1 → B2 走 fw-hil-testing（真机矩阵）'，(L28) B2 证据包是发布门禁前置"
+    },
+    {
+     "assertion": "QEMU 成果不否定：按 Boot Verified (QEMU) 徽章入档，若进内部/测试渠道须显式标注非 HIL 级",
+     "verdict": "pass",
+     "evidence": "completion-badges.md §1 (L10) B1 徽章定义与证据要求（模拟器启动日志+冒烟记录标明 QEMU）；§3 (L28) '渠道版徽章 < B2 时只能进内部/测试渠道并显式标注'；SKILL.md L85 没拿到哪级就声明到哪级"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-hil-testing-03",
+   "routed_to": "fw-hil-testing",
+   "expected_skills": [
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "先定类再动手（构建/烧录/功能三分类），不在硬件上反复盲刷。'串口无输出'排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区/介质对？）→ 换已知良好镜像验证板是否响应。Pre-Flash 红线：bootloader/出厂校准/NVS 不碰；烧前须留存回退镜像，排障期间每次重烧前确认回退镜像仍在、校验和未变。路由：板能响属镜像问题→构建侧 fw-emulation 分离'镜像坏 vs 板问题'；有输出但崩溃/复位→esp32-debug；OpenWrt 盒子完全无响应→openwrt-serial-recovery。",
+   "assertion_results": [
+    {
+     "assertion": "先定类再动手：构建失败/烧录失败/功能失败三分类，不在硬件上反复盲刷",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C step 1 (L128) '先定类再动手（构建/烧录/功能三分类），不在硬件上反复盲刷'；失败三分类路由表 (L101-107)"
+    },
+    {
+     "assertion": "排查顺序：观察链路（波特率 115200 为常见值以板实测、TX/RX 交叉、共地、供电、端口）→ 烧录日志证据（写入成功？目标分区对？）→ 换已知良好镜像验证板是否响应",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C step 2 (L129-133) 三层排查顺序逐项命中：观察链路（波特率 115200 常见值以板实测、TX/RX 交叉、共地、供电、端口选对没）、烧录证据（写入成功？写到对的分区/介质？）、最小引导（换已知良好镜像验证板能响）"
+    },
+    {
+     "assertion": "提醒 Pre-Flash 红线：bootloader/校准区/NVS 不碰；若烧前未留存回退镜像，后续每步风险升级",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pre-Flash Checks #2 (L32) 'bootloader / 出厂校准 / NVS 默认不碰'、#3 (L33) '可回退固件必须先留存'；Workflow C step 3 (L134) '排障期间不擦红线分区；每次重烧前确认回退镜像仍在、校验和未变'；Pitfall 2 (L146) 第一次烧录就要想好怎么退回来"
+    },
+    {
+     "assertion": "路由正确：板能响属镜像问题转构建侧（fw-emulation 分离镜像 vs 板），有输出但崩溃/复位转 esp32-debug，盒子类完全无响应转 openwrt-serial-recovery",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow C step 2 末条 (L133) 'OpenWrt 盒子完全无响应 → openwrt-serial-recovery；有输出但崩溃 → esp32-debug'；失败三分类表 (L105) 'fw-emulation 无板复现，分离镜像坏 vs 板问题'"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-hil-testing-04",
+   "routed_to": "fw-hil-testing",
+   "expected_skills": [
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "按网关型矩阵（Workflow A）逐行验收：上电到可用（冷启动到 Web 可用连续 10 次计时）、存储挂载、核心服务、Web 后台；异常路径必须真做——断电 N 次循环（如定时插座 60s×10）、拔 WAN 断网降级、满盘/畸形配置异常输入；长时间运行 ≥24h soak 起步，采样内存/温度/服务存活/重启计数；升级路径做升级成功+升级中断电回退并演练回退镜像/ddbr 恢复。Pre-Flash：烧前 ddbr 备份当前可用固件，bootloader/校准区不碰。单台全绿只是 G1 工程样机级门票，批量按 G1→G2→G3→G4 商业门禁逐级放行，激活率/启动率/退款率类指标在 G2 小批量阶段观察。",
+   "assertion_results": [
+    {
+     "assertion": "按网关型矩阵实例化：上电到可用、存储挂载、核心服务、Web 后台逐行验收",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 2 (L114) '实例化网关型矩阵：上电到可用、存储挂载、核心服务、Web 后台、断电恢复循环、断网降级、soak、升级/回退'；evidence-matrix.md §2 (L14-20) 实例行集"
+    },
+    {
+     "assertion": "异常路径必须真做：断电循环（如 10 次拔电）、断网降级、异常输入（满盘/畸形配置）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 4 (L116) '断电用定时插座或拔电做 N 次循环；断网拔 WAN 看 LAN 侧服务存活；异常输入喂满盘、畸形配置'；evidence-matrix.md §1 例行'定时插座断电 60s×10 次' (L10)、§2 异常路径行 (L18)"
+    },
+    {
+     "assertion": "长时间运行：≥24h soak 起步，采样内存/温度/服务存活/重启计数",
+     "verdict": "pass",
+     "evidence": "SKILL.md L70 '长时间运行：soak 采样 ≥24h 起步（内存、温度、服务存活、重启计数）'；evidence-matrix.md §2 长时间运行行 (L19) 同四项采样指标"
+    },
+    {
+     "assertion": "升级路径：升级成功+升级中断电回退，并演练回退镜像/ddbr 恢复",
+     "verdict": "pass",
+     "evidence": "SKILL.md L71 升级路径'升级成功 + 升级中断/回滚'；evidence-matrix.md §2 (L20) '升级成功；升级中断电回退；回退镜像恢复演练'；Pre-Flash #3 (L33) 'OpenWrt 盒子走 ddbr 备份'；Validation Gates 回退演练 (L140) '至少成功执行一次从留存镜像恢复'"
+    },
+    {
+     "assertion": "Pre-Flash：烧前留存当前可用固件备份（ddbr），bootloader/校准区不碰",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pre-Flash Checks #2 (L32) 分区红线、#3 (L33) ddbr 备份+回退三问（文件在哪/校验和/怎么刷回）；Workflow A step 1 (L113) '过 Pre-Flash Checks（ddbr / 镜像备份先行）'"
+    },
+    {
+     "assertion": "单台全绿只是 G1 工程样机级，批量按 G1→G2→G3→G4 商业门禁逐级放行（激活率/启动率/退款率类指标在小批量阶段观察）",
+     "verdict": "pass",
+     "evidence": "SKILL.md 商业门禁模式 (L109) '单台矩阵全绿只是 G1 工程样机级门票；……G2 单渠道小批量受控观察（激活率/启动率/退款率类指标）→ G3 多渠道扩量对比 → G4 售后指标门禁逐级放行，禁止越级'；evidence-matrix.md §4 (L34-45) G1-G4 表（G2=5 台×观察 14 天、三类指标达线）"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-toolchain-01",
+   "routed_to": "fw-toolchain",
+   "expected_skills": [
+    "fw-toolchain"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot。宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式。基准模式：容器内 rustup target add aarch64-unknown-linux-musl + apt 安装 gcc-aarch64-linux-gnu 作链接器（模式经 TinyNAS 实测项目验证，仅作模式引用），target 与工具链锁进 rust-toolchain.toml 入库；纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）。产物实证：file 应为 ELF 64-bit ARM aarch64 … statically linked；三版本轴分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing。",
+   "assertion_results": [
+    {
+     "assertion": "核心立场先行：优先让平台构建系统托管工具链，禁止手工拼 sysroot（防头文件/libc/链接器版本错配）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8 开篇核心立场逐字命中；Contract 2 (L43) '禁止手工拼 sysroot……头文件/libc/链接器与目标环境不匹配'；hosting-matrix.md §2 'sysroot 手拼三宗罪' (L17)"
+    },
+    {
+     "assertion": "宿主形态纠正：模式基准是 Linux 宿主，macOS 不要硬凑，进 Docker/Linux 容器执行同一模式（与官方 IB 的 macOS 用法口径一致）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 1 (L62) '模式以 Linux 宿主为基准……macOS/Windows 不要在宿主上硬凑——进 Docker/Linux 容器执行同一模式（与 IB 的 macOS 用法一致）'；hosting-matrix.md §3 (L22-23)；Pitfall 5 (L104)"
+    },
+    {
+     "assertion": "给出基准模式：容器内 rustup target add aarch64-unknown-linux-musl + 发行版安装宿主交叉 gcc（如 apt 安装 gcc-aarch64-linux-gnu）作链接器（注明该模式经实测项目 TinyNAS 实例验证，仅作模式引用）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 2-3 (L63-64)：apt-get install gcc-aarch64-linux-gnu + rustup target add aarch64-unknown-linux-musl，并注明'模式已在实测项目验证：TinyNAS 实例……仅作模式引用'；hosting-matrix.md §1 第一行与 §4 模式引用节"
+    },
+    {
+     "assertion": "版本锚定：target 与工具链锁进 rust-toolchain.toml 并入库；提醒纯 Rust 走 musl self-contained 链接，引入 C 依赖需与目标 libc 匹配的交叉工具链（运行时核验）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 3-4 (L64-65)：锁进 rust-toolchain.toml；'纯 Rust 依赖走 musl self-contained 链接通常即可；一旦引入 C 依赖，需要与目标 libc 匹配的交叉工具链，链接配置以实测为准（运行时核验）'；version-pinning.md §2 Rust/musl 链 (L30-31)"
+    },
+    {
+     "assertion": "产物实证：file 输出应为 ELF 64-bit aarch64 且 statically linked；三版本轴（本机/项目锁定/上游 latest）分开记录；无板先验路由 fw-emulation，真机验收路由 fw-hil-testing",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A step 5 (L68-71) file 期望 'ELF 64-bit ARM aarch64 ... statically linked'；Preflight 三版本轴表 (L26-32)；Validation Gates 1-2 (L92-93) 书面记录与逐字留档；step 6 (L73) 与 hand-off 表 (L56-57) 双路由"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-toolchain-02",
+   "routed_to": "fw-toolchain",
+   "expected_skills": [
+    "fw-toolchain",
+    "esp32-idf"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "纠正，不照做：ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套；apt/brew 手装版本不受管控属版本漂移。正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）。工程侧安装/激活/CI 环境细节移交 esp32-idf，本技能不复述其步骤。重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要。可复现性：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追 latest。",
+   "assertion_results": [
+    {
+     "assertion": "handoff 纠正：不照做——ESP 工具链（xtensa-esp-elf / riscv32-esp-elf）由 ESP-IDF 自带工具链管理托管，版本与 IDF 严格配套，apt/brew 手装版本不受管控属版本漂移",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B (L77-79) '纠正，不照做……随 IDF 发行包……版本与 IDF 严格配套……手动 apt/brew 安装的版本不受 IDF 管控，属版本漂移'；Contract 3 (L44)；hosting-matrix.md §1 ESP32 行 (L11)"
+    },
+    {
+     "assertion": "正确修复路径 = 修复 IDF 环境本身：idf.py --version 对照项目锁定 IDF，重新走 IDF 官方安装/激活流程（export 一族进环境）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B step 2 (L80) '确认 idf.py --version 与项目锁定 IDF 一致，重新走 IDF 的安装/激活流程'；step 1 (L79) '每个终端经 IDF 的激活脚本（export 一族）进入环境'"
+    },
+    {
+     "assertion": "工程侧安装/激活/CI 环境细节路由 esp32-idf，不在此复述其步骤",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B step 3 (L81) '工程侧（安装流程、激活、CI 环境）细节移交 esp32-idf，本 Skill 不复述其步骤'；Determine Task Type #2 (L13)；hand-off 表 (L54)"
+    },
+    {
+     "assertion": "重申契约：禁止绕过托管者手动安装、禁止手工拼 sysroot，缺什么回托管者要",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contract 2 (L43) '缺依赖应回到托管者'、Contract 3 (L44) '禁止绕过 IDF 手动安装 ESP 工具链'；Pitfalls 1-2 (L100-101)；hosting-matrix.md §2 '托管者还负责更新……不走再拷一份新的进来' (L18)"
+    },
+    {
+     "assertion": "构建可复现性提醒：工具链版本随 IDF 锚定（dependencies.lock + 固定 IDF 检出），不单独追工具链 latest",
+     "verdict": "pass",
+     "evidence": "SKILL.md Contract 4 (L45) 'IDF=dependencies.lock + 固定 IDF 检出版本'；version-pinning.md §2 ESP-IDF 链 (L20) '可复现构建 = 固定 IDF 检出 + 提交 dependencies.lock'；三版本轴纪律 (version-pinning.md §1 L13 上游 latest 不自动采用；SKILL.md Pitfall 3)"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-toolchain-03",
+   "routed_to": "fw-toolchain",
+   "expected_skills": [
+    "fw-toolchain"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "answer": "按三版本轴对表排查定位漂移：本机轴（Preflight 实测命令）/ 项目锁定轴（仓库锚定文件，唯一构建依据）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'，不自动采用）。各链锚定：IDF 链提交 dependencies.lock + 固定 IDF 检出（tag/commit），managed_components 勿手改，IDF_VERSION 类约定以项目仓库实际为准（运行时核验）；OpenWrt 链固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存；Rust/musl 链 rust-toolchain.toml 入库 + 固定 target。修复方向永远是对齐项目锁定轴，不是集体升 latest。验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate。",
+   "assertion_results": [
+    {
+     "assertion": "三版本轴对表排查：本机轴（实测命令）/ 项目锁定轴（仓库锚定文件）/ 上游 latest 轴（官方 release，引用带'截至 2026-09-02'），先定位漂在哪根轴",
+     "verdict": "pass",
+     "evidence": "SKILL.md Preflight 三版本轴表 (L26-32) 三轴定义与确认方式；Workflow C step 1 (L85) '按三版本轴逐轴实测……定位哪根轴漂了'；version-pinning.md §1 (L5-13) '排障第一步永远是三轴对表'，latest 轴引用必须带截至 2026-09-02"
+    },
+    {
+     "assertion": "IDF 链锚定：提交 dependencies.lock + 固定 IDF 检出版本（tag/commit），managed_components 勿手改；IDF_VERSION 类锚定文件以项目仓库实际为准（运行时核验）",
+     "verdict": "pass",
+     "evidence": "version-pinning.md §2 ESP-IDF 链 (L19-21) 三要素逐项命中，含 'IDF_VERSION 之类的锚定文件/变量约定……以项目仓库实际文件为准——运行时核验，不要假设通用存在'"
+    },
+    {
+     "assertion": "OpenWrt 链锚定：固定版本 IB tarball（基线 25.12.5）+ SOURCE_DATE_EPOCH，IB 目录按版本缓存，不追 latest",
+     "verdict": "pass",
+     "evidence": "version-pinning.md §2 OpenWrt 链 (L25-26) '版本 pin 到具体号（基线 25.12.5，走读 2026-09-02）……按版本目录缓存复用' + SOURCE_DATE_EPOCH；SKILL.md Pitfall 4 (L103) '不要用不带版本 pin 的 IB 目录'"
+    },
+    {
+     "assertion": "Rust/musl 链锚定：rust-toolchain.toml 入库 + 固定 target；修复方向是对齐项目锁定轴而不是集体升 latest",
+     "verdict": "pass",
+     "evidence": "version-pinning.md §2 Rust/musl 链 (L30-31) 'rust-toolchain.toml 钉 channel 与组件，随仓库提交……固定 target'；SKILL.md Workflow C step 3 (L87) '修复方向永远是对齐到项目锁定轴，不是大家升到 latest'"
+    },
+    {
+     "assertion": "可复现性验收：两台机器按锚定文件构建 sha256 一致，产物 file 架构留档；发布侧校验路由 fw-release-gate",
+     "verdict": "pass",
+     "evidence": "SKILL.md Validation Gate 4 (L95) '团队两台机器按锁定文件构建出 sha256 一致的产物（可复现性抽检）'、Gate 2 (L93) file 输出逐字留档；Workflow C step 4 (L88) '产物发布校验 → fw-release-gate'；version-pinning.md §4 纪律 4 (L56)"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-freertos-01",
+   "routed_to": "esp32-freertos",
+   "expected_skills": [
+    "esp32-freertos"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中：esp32-freertos description 显式列出 'stack sizing in BYTES'、'stack-overflow/watchdog triage'、触发词 xTaskCreate/栈溢出/任务优先级；随机重启的崩溃取证由其边界移交 esp32-debug。",
+   "answer_summary": "按 Workflow 2 作答：先 Preflight（idf.py --version、grep sdkconfig、改前先复现）；指出 IDF FreeRTOS 栈参数单位是字节，1024=1KB（与上游'字'差 4 倍）；拒绝拍脑袋给安全值——栈大小是项目决策，给保守值+打印高水位验证+逐步收紧；排障按 复现记录→字节换算→优先级/时间片→一次只改一个维度；若现场需要 backtrace/coredump 取证，显式移交 esp32-debug。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "指出 IDF FreeRTOS 的栈参数单位是字节（1024=1KB），与上游 FreeRTOS 的'字'不同（基线高置信差异点）",
+     "verdict": "pass",
+     "evidence": "skills/esp32-freertos/SKILL.md L62 '栈单位是字节（IDF FreeRTOS 与上游\"字\"不同，基线高置信）——审代码时先换算：4096 = 4KB，不是 1024 字'；同义强化 L8、Pitfalls L82（'差 4 倍'）；description L3 'stack sizing in BYTES (not words like upstream FreeRTOS)'；references/smp-pinning.md L24。"
+    },
+    {
+     "assertion": "拒绝拍脑袋给'安全数值'：栈大小是项目决策，给保守值+高水位实测+逐步收紧的验证方法",
+     "verdict": "pass",
+     "evidence": "SKILL.md L63 '新任务先用保守栈值 + 打印高水位验证，再逐步收紧；不要拍脑袋定\"2048 就够\"'；Contracts L39 '栈大小、优先级、队列长度是项目决策…禁止建议时编造\"推荐值\"却声称是官方值'；Validation Gates L78 '栈高水位在压测后仍有余量'。"
+    },
+    {
+     "assertion": "排障顺序：复现记录→字节换算检查→优先级/忙等检查→一次只改一个维度",
+     "verdict": "pass",
+     "evidence": "Preflight L28 '记录现存任务的栈参数与绑核情况，改动前先复现问题'；Workflow 2 L62（字节换算）、L65（优先级继承/同优先级时间片）；Contracts L40 '每次只改一个维度（栈 OR 优先级 OR 绑核），改前留复现手段'。"
+    },
+    {
+     "assertion": "崩溃现场取证（backtrace/coredump）显式移交 esp32-debug（handoff），不在本技能内假装能定位崩溃原因",
+     "verdict": "pass",
+     "evidence": "Determine Task Type L15 '崩溃现场（panic/backtrace/coredump）→ 移交 esp32-debug'；Workflow 2 L66 '疑似栈溢出的现场取证（backtrace/coredump）移交 esp32-debug'；Hand-off 表 L48。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-freertos-02",
+   "routed_to": "esp32-freertos",
+   "expected_skills": [
+    "esp32-freertos"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中：'mutex patterns'、'portMUX critical sections'、触发词 互斥/双核/PRO_CPU。",
+   "answer_summary": "明确指出同事方案不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核（基线明确，高频误用点）。正确方案：任务间互斥用互斥量（带优先级继承）；极短临界区用 portMUX 自旋锁（持锁期间本核中断被屏蔽，临界区必须极短、绝不阻塞）。不编造推荐栈/优先级数值；优先级引用带'默认 25，可配，以本项目 sdkconfig 为准'。建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "明确指出不对：vTaskSuspendAll 只挂起当前核的调度器，双核下锁不住另一个核，不能当互斥用（基线明确）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow 1 L56 '不要用 vTaskSuspendAll 当互斥——它只挂起当前核的调度（基线明确）'；Pitfalls L84 '双核下它只挂起当前核，锁不住另一个核'；references/smp-pinning.md L26 '只挂起当前核的调度器——双核下不能当互斥用（高频误用点）'。"
+    },
+    {
+     "assertion": "给正确方案：任务间互斥用互斥量（优先级继承），极短临界区用 portMUX 自旋锁（持锁不阻塞）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L56 '互斥用互斥量（考虑优先级继承）'；smp-pinning.md L25 '临界区用 portMUX 自旋锁——持锁期间本核中断被屏蔽，所以临界区必须极短、绝不阻塞'。"
+    },
+    {
+     "assertion": "不编造'推荐栈/优先级'官方数值；优先级引用时带'默认 25，可配，以本项目 sdkconfig 为准'",
+     "verdict": "pass",
+     "evidence": "Contracts L39；Preflight L27 '不要按 25 回答，按 sdkconfig 回答'；Workflow 2 L64 '有效范围 0 到 CONFIG_FREERTOS_MAX_PRIORITIES-1（默认 25 → 0–24…）；以本项目 sdkconfig 为准'；Pitfalls L83。"
+    },
+    {
+     "assertion": "建议先 grep sdkconfig 的 CONFIG_FREERTOS_UNICORE/MAX_PRIORITIES 确认运行时现状",
+     "verdict": "pass",
+     "evidence": "Preflight L22 'grep -E \"CONFIG_FREERTOS_(UNICORE|MAX_PRIORITIES)\" sdkconfig'；L26 确认单/双核运行。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-freertos-03",
+   "routed_to": "esp32-freertos",
+   "expected_skills": [
+    "esp32-freertos"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中：'xTaskCreatePinnedToCore and SMP dual-core pinning on ESP32/S3/P4/H4 (PRO_CPU/APP_CPU)'、触发词 双核/绑核。",
+   "answer_summary": "先说明核语义（S3 为 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务）；再读 smp-pinning 决策树：无明确理由不绑核是默认起点，绑核要有目的（隔离抖动→重任务绑 APP_CPU；ISR 归属→任务与 ISR 同核）；不凭印象断言某协议栈固定跑哪个核，要求运行时实测每核负载/idle 占用；改绑核后跑长稳压测（覆盖最坏业务路径），无硬件证据标注 Build Verification Only 或 Pending HIL。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "先说明核语义：S3 是 SMP 双核，Core 0=PRO_CPU / Core 1=APP_CPU，每核独立调度器与 idle 任务（基线高置信）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Offline Baseline L33 'SMP 双核目标：ESP32、ESP32-S3…（Core 0=PRO_CPU / Core 1=APP_CPU）'；smp-pinning.md L12（S3 行）、L22 '每核独立调度器与 idle 任务'。"
+    },
+    {
+     "assertion": "读 smp-pinning 决策树：无明确理由不绑核是默认起点；绑核要有目的（隔离抖动/ISR 归属）",
+     "verdict": "pass",
+     "evidence": "smp-pinning.md L31-37 绑核决策树 '没有明确理由 → 不绑核（默认），先测基线'、'隔离抖动…重任务绑 APP_CPU'、'外设 ISR/驱动归属某核 → 相关任务与 ISR 同核'；SKILL.md Workflow 3 L71 同旨。"
+    },
+    {
+     "assertion": "不凭印象断言'某协议栈固定跑哪个核'，要求实测负载分布",
+     "verdict": "pass",
+     "evidence": "smp-pinning.md L27 '绑 Core 0 前先确认系统负载现状（运行时实测，勿凭印象断言某协议栈固定跑哪核）'；反幻觉 L47 '某外设驱动固定在 PRO_CPU 运行之类的断言基线未抓取——以实测与官方文档为准'。"
+    },
+    {
+     "assertion": "改绑核后要求长稳压测验证，无硬件证据标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "SKILL.md L72 '改绑核后实测：不要只看\"能跑\"…（无硬件证据标注 Build Verification Only）'；smp-pinning.md L41-43 '改绑核前后各跑一轮长稳压测…无硬件时标注 Build Verification Only 或 Pending HIL'；Validation Gates L77。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-idf-01",
+   "routed_to": "esp32-idf",
+   "expected_skills": [
+    "esp32-idf"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中：esp32-idf description 'v5→v6 migration of removed legacy drivers and esp-mqtt'、'build/flash troubleshooting'、触发词 'v5 工程升级 v6 编译报错'。",
+   "answer_summary": "按 Workflow B：先 idf.py --version 实测本机大版本，并区分三个版本轴（本机 IDF / 项目锁定 tag+dependencies.lock / 官方 latest stable）。定位根因：v6.0 移除大量 legacy 驱动（基线点名 ADC、I2S、Timer 等）→ 头文件找不到；v6.1 将 esp-mqtt 移入组件管理器 → idf.py add-dependency espressif/mqtt。不凭记忆背'被移除 API 完整清单'，给官方 Migration Guides + 本机 components/ 源码树核验路径。迁移步骤确定性：存全量报错（tee v6-build.log）→ 逐类归因 → 逐类修复 → 每修一类单独重验提交。版本号引用一律带'截至 2026-09-02'。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "先运行时核验：idf.py --version 确认本机大版本，并指出项目锁定版本与本机版本需区分（三版本区分）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Preflight L23 'idf.py --version # 本机 IDF 实际版本'；L30-36 三版本轴表（本机 IDF / 项目锁定 $IDF_PATH+dependencies.lock / 官方 latest stable）。"
+    },
+    {
+     "assertion": "定位到 v5→v6 破坏性变更：v6.0 移除 legacy 驱动（ADC/I2S/Timer 等）、v6.1 将 esp-mqtt 移入组件管理器（idf.py add-dependency espressif/mqtt）",
+     "verdict": "pass",
+     "evidence": "references/v5-to-v6-migration.md L14 'v6.0 移除大量旧版（legacy）驱动——基线明确点名 ADC、I2S、Timer 等'；L17 'v6.1 将 esp-mqtt 移入组件管理器…idf.py add-dependency espressif/mqtt'；SKILL.md Workflow B L90 按报错定位两类症状。"
+    },
+    {
+     "assertion": "不凭记忆断言完整的被移除 API 清单，给出官方 Migration Guides + 本机构建日志的核验路径",
+     "verdict": "pass",
+     "evidence": "SKILL.md L91 '禁止凭记忆背\"被移除 API 的完整清单\"'；migration.md L39 UNVERIFIED 表 '官方 Migration Guides + 本机 components/ 目录实查'；L48 Pitfall 3。"
+    },
+    {
+     "assertion": "给出确定性迁移步骤：存全量报错→逐类归因→逐类修复→每类单独重验提交",
+     "verdict": "pass",
+     "evidence": "migration.md L22-28 迁移流程代码块（tee 全量 log → 逐类归因 → 逐类修复 → 每修一类重验）；L30 '每类错误单独提交，出问题可回退'；SKILL.md L92 同旨。"
+    },
+    {
+     "assertion": "引用版本号（如 v6.1）时带'截至 2026-09-02'的日期化基线口径",
+     "verdict": "pass",
+     "evidence": "migration.md L6-8 '版本背景（引用必带日期）…截至 2026-09-02：最新 stable v6.1（2026-08-27 发布）'；SKILL.md L39、L115 Pitfall 6 '所有\"最新版本\"必须带\"截至 2026-09-02\"并提示运行时核验'。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-idf-02",
+   "routed_to": "esp32-ota",
+   "expected_skills": [
+    "esp32-idf",
+    "esp32-ota"
+   ],
+   "routing_match": false,
+   "routing_rationale": "仅凭清单路由：用户最终交付物是 OTA 能力与 esp_ota 代码。esp32-ota description 直接触发（'Use when the user says OTA 升级… asks 加双分区可回滚'，且自带 minimal partitions CSV template），对 prompt 覆盖最完整；esp32-idf description 自身写明 'Route … OTA … to their dedicated esp32-* skills'。故主路由落 esp32-ota，而非 expected 首元素 esp32-idf。存在部分歧义（'改工程/分区表'也命中 esp32-idf 的 partitions.csv/分区表触发词），但 esp32-ota 单技能即可覆盖分区表+回滚+实施全链，是最具体匹配。",
+   "answer_summary": "按 esp32-ota Workflow A 作答：读 target 先行（idf.py partition-table），拒绝编造分区偏移；给 OTA 最小完整 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1，Offset 列全部留空自动排布，Size 按实测 flash 与 app 体积调整）；menuconfig 预选 'Factory app, two OTA definitions' 并启用 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE；实现 esp_ota_get_next_update_partition → begin/write/end → set_boot_partition，下载用 esp_https_ota（证书校验不可关闭）；新镜像首启自检通过后必须调 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚（第一反陷阱）；无真机结论标 Build Verification Only。CSV 字段/Type/SubType 机制细节反向 hand-off esp32-idf。",
+   "verdict": "fail",
+   "assertion_results": [
+    {
+     "assertion": "识别为 OTA 改造任务：本 Skill 只负责分区表骨架（factory/ota_0/ota_1/otadata 双 OTA 布局 + menuconfig 'Factory app, two OTA definitions' 预设方向），实施显式移交 esp32-ota（handoff）",
+     "verdict": "warn",
+     "evidence": "OTA 改造识别与双 OTA 布局均满足：esp32-ota/SKILL.md L36（ota_0/ota_1+otadata 前提）、L44-58（最小 CSV 模板）、L90（'Factory app, two OTA definitions' 预设）。'只建骨架→移交 esp32-ota'的合同确实存在于 esp32-idf/SKILL.md L17 与 Hand-off L63——但由于清单路由直接落在 esp32-ota，该 handoff 流向从未发生；实际服务技能本身就是实施方。断言描述的是 expected 首技能的合同，与实际路由产物不一致。"
+    },
+    {
+     "assertion": "分区表用 Offset 留空的自动排布模板，Size 标注为示意值需按实测 flash 调整，不编造分区偏移",
+     "verdict": "pass",
+     "evidence": "esp32-ota/SKILL.md L44 'Offset 列全部留空 = 交由构建自动排布…不要手填记忆里的偏移值'、L48-49 模板注释 '各 Size 按实际 flash 容量与 app 体积调整…以 idf.py partition-table 输出为准'、L25 '拒绝编造分区偏移/大小'、Pitfalls L123；交叉印证 esp32-idf/references/partition-table-template.md L39（'Size 为示意值'）与 L43（反幻觉红线）。"
+    },
+    {
+     "assertion": "提示回滚需 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 与 esp_ota_mark_app_* 配套，细节由 esp32-ota 展开",
+     "verdict": "pass",
+     "evidence": "（按实际路由技能核验）esp32-ota/SKILL.md L71 第一反陷阱（开 ROLLBACK 后必须显式调 esp_ota_mark_app_valid_cancel_rollback()，否则首启重启即回滚）、L90/L92 配套实现、Pitfalls L122；esp32-idf 侧 menuconfig-decisions.md L19 同一事实，双方一致无冲突。"
+    },
+    {
+     "assertion": "不直接产出完整 OTA 实现代码，避免与 esp32-ota 职责重叠",
+     "verdict": "fail",
+     "evidence": "该断言编码的是 esp32-idf 的范围合同（SKILL.md L17 '本 Skill 只建分区表骨架，实施移交 esp32-ota'）。实际路由技能是 esp32-ota，其 description 与 Workflow A 第 3 步（SKILL.md L91 esp_ota_get_next_update_partition → begin/write/end → set_boot_partition、esp_https_ota）明确将'给出 esp_ota 流程'作为本职交付。按 esp32-ota 指引作答必然产出实现流，断言从被路由技能视角不可满足。根因是场景 expected 首技能与包内清单路由设计冲突（esp32-idf 清单自我路由 OTA 到专职技能），而非技能内容缺陷；两技能边界定义本身互补且自洽。"
+    }
+   ],
+   "issues": [
+    "路由不匹配（核心发现）：场景 expected 首元素 esp32-idf 与插件清单自身路由规则冲突——esp32-idf description 明确 'Route … OTA … to their dedicated esp32-* skills'，esp32-ota description 对本 prompt（OTA 升级+分区表+esp_ota 代码）覆盖最完整，全新上下文路由器必然落在 esp32-ota。建议将场景 expected_skills 顺序改为 ['esp32-ota','esp32-idf']，或改写 prompt 使 esp32-idf 入口成立（如只问分区表如何改）。",
+    "断言 1/4 以 esp32-idf 视角编写，对实际路由技能不可满足/不适用（断言本身措辞无误，已核对 scenarios.json 原文）。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-idf-03",
+   "routed_to": "esp32-idf",
+   "expected_skills": [
+    "esp32-idf"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中：'idf.py workflow (create-project/set-target/menuconfig/build/flash/monitor)'、触发词 烧写/monitor。",
+   "answer_summary": "Preflight：idf.py --version 实测本机 IDF；target 与模组丝印/原理图核对一致（esp32s3）才继续。命令链：idf.py create-project → set-target esp32s3（会清 build/ 并重生成 sdkconfig；默认 target 是 esp32）→ menuconfig（决策点见 menuconfig-decisions.md）→ build → flash -p PORT → monitor，可链式执行。烧写前确认串口设备（-p/ESPPORT）与权限；分区需求超单 factory 时先改 partitions.csv（模板下沉到 partition-table-template.md）。烧写验证前所有结论标注 Build Verification Only。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "Preflight 先 idf.py --version 实测本机 IDF，并核对模组丝印/原理图与 esp32s3 target 一致",
+     "verdict": "pass",
+     "evidence": "SKILL.md Preflight L23；L38 'target 必须与芯片实物核对：模组丝印/原理图上的芯片型号，与 set-target 的值一致才能继续；对不上就停下来问'；Contracts L49 同旨。"
+    },
+    {
+     "assertion": "给出完整命令链：idf.py create-project → set-target esp32s3（说明会清 build 并重生成 sdkconfig，默认 target 是 esp32）→ build → flash -p PORT → monitor，可链式执行",
+     "verdict": "pass",
+     "evidence": "Workflow A L75-80 完整命令块，L76 行内注释 '清空 build/ 并重新生成 sdkconfig；默认 target 是 esp32'，L79 '可链式执行，顺序由 idf.py 保证；-p 也可用 ESPPORT'；Pitfalls L110（勿跳过 set-target）。"
+    },
+    {
+     "assertion": "menuconfig 决策与分区模板按需下沉到 references（menuconfig-decisions / partition-table-template）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L77 'idf.py menuconfig # 决策点见 references/menuconfig-decisions.md'；L84 '分区需求超\"单 factory\"时，先改 partitions.csv 再 build（模板见 references）'；两份 reference 文件实际存在且内容对应（menuconfig-decisions.md L18 分区预设；partition-table-template.md 模板一/二）。"
+    },
+    {
+     "assertion": "烧写前确认串口设备与权限；无板上验证结果前标注 Build Verification Only，不声称'已可用'",
+     "verdict": "pass",
+     "evidence": "Contracts L51 '烧写通道：确认串口设备（-p PORT 或 ESPPORT）与权限'；Validation Gates L106 '无真实硬件证据时，汇报必须标注 Build Verification Only'；Pitfalls L114 '不要把\"build 通过\"汇报成\"板子可用\"'。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-release-gate-01",
+   "routed_to": "fw-release-gate",
+   "expected_skills": [
+    "fw-release-gate"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单直接命中触发语 'Use when the user asks 镜像发布前检查什么'。",
+   "answer_summary": "按 Workflow A 主路径逐项给可脚本化检查单（release-checklist.md 提供完整 sh 骨架，pass/fail 计数、全绿退出 0）：1 产物存在+.sha256 成对且门禁重算一致；2 命名 lint 五段式（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），device/version/channel/date 与构建记录一致、日期取自构建记录不手填；3 零外链扫描；4 密钥/凭据扫描（只报路径）；5 回滚预案成文；6 HIL 徽章达标——渠道版必须 ≥ HIL Verified，Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注；7 发布说明含已知问题（无也要写'已知问题：无'）；8 LICENSE 清单。负向验证：故意改名/篡改镜像/删 .sha256，门禁必须拦截。任一项失败修复后重跑全单。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出可脚本化检查单：产物存在+sha256 成对且门禁重算一致、命名 lint、零外链扫描、密钥扫描、回滚预案、HIL 徽章达标、发布说明含已知问题、LICENSE 清单",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow A L81-88 八项逐条列出；Contracts L37（'门禁重算通过——构建时算过不算数'）；references/release-checklist.md §1-§8 提供可执行 sh 骨架（L7-69）含 sha256sum -c 重算、密钥扫描只报路径（L51-52、L76）。"
+    },
+    {
+     "assertion": "命名按五段式模板核对（openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>），文件名与构建记录一致，不手填日期",
+     "verdict": "pass",
+     "evidence": "SKILL.md L57-63 五段式模板 + 'date：构建日期，取自构建记录（SOURCE_DATE_EPOCH / CI 输出），不是手填'；Workflow A L82 '文件名中的 device/version/channel/date 与构建记录一致'；naming-and-versioning.md L10 模板、L47 lint 判则第 7 条；Contracts L41 反幻觉红线。"
+    },
+    {
+     "assertion": "徽章门槛：渠道版必须 ≥ HIL Verified；Build Verification Only / Boot Verified (QEMU) 只能进内部/测试渠道并显式标注",
+     "verdict": "pass",
+     "evidence": "Contracts L40 逐字覆盖；Workflow A 第 6 项 L86；Pitfalls L123；release-checklist.md §6 L57-59（发布说明未载明 HIL Verified 即 FAIL）。"
+    },
+    {
+     "assertion": "要求负向验证：故意破坏一项（改名/篡改镜像/删 .sha256），门禁必须能拦截",
+     "verdict": "pass",
+     "evidence": "Validation Gates L115 '负向验证：故意破坏一项（改名/篡改镜像一个字节/删 .sha256），门禁必须拦截'；release-checklist.md §3 L79-85 四条破坏测试'四条全拦住才算门禁可用；拦不住任何一条的检查项是摆设，删掉重写'。"
+    },
+    {
+     "assertion": "任一项失败修复后重跑全单，不是只补失败项",
+     "verdict": "pass",
+     "evidence": "SKILL.md L90 '任一项失败 → 修复后重跑全单（不是只补失败项）'；naming-and-versioning.md §5 L63 '改名/改版后重跑全单'。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-release-gate-02",
+   "routed_to": "fw-release-gate",
+   "expected_skills": [
+    "fw-release-gate"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单直接命中 'proposes 把签名私钥放进 CI 环境变量 (refuse with a governance plan)'。",
+   "answer_summary": "明确 refusal：CI 明文环境变量会进日志、被子进程继承、落进镜像层，'仓库是私有的'不改变泄露面。治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查。非对称三不变式：固件/设备只嵌公钥（或摘要）、私钥只在构建/签名机、渠道子密钥分发。ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot。",
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "明确拒绝（refusal）：CI 明文环境变量会进日志、被子进程继承、落进镜像层，私有仓库不改变泄露面",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls L119 '明文变量会进日志、被子进程继承、落进镜像层；\"仓库是私有的\"不改变泄露面'（与断言逐点对应）。"
+    },
+    {
+     "assertion": "给出治理方案：构建与签名分离——CI 产出未签名制品，离线机/受控签名服务完成签名，CI 只留公钥摘要做验证性检查",
+     "verdict": "pass",
+     "evidence": "Pitfalls L119 '正确姿势：构建与签名分离，CI 只留公钥摘要做验证性检查'；签名与密钥治理 L47-48 不变式 1/2（'私钥只存在于构建/签名机（离线机或受控签名服务），永不进 git、CI 明文变量、日志'）。"
+    },
+    {
+     "assertion": "给出非对称模式：固件只嵌公钥（或公钥摘要）、私钥仅构建/签名机、渠道子密钥分发",
+     "verdict": "pass",
+     "evidence": "SKILL.md L45-49 三条治理不变式逐字覆盖（L47 固件/设备只嵌公钥（或公钥摘要）；L48 私钥只在构建/签名机；L49 渠道子密钥分发）。"
+    },
+    {
+     "assertion": "若私钥已配置过：按已泄露处理（停用→评估作废/轮换→复盘），不是删掉变量就完事",
+     "verdict": "warn",
+     "evidence": "技能内无'已配置私钥的泄露响应 runbook'。最接近的仅有：L49 '某渠道泄露只作废该渠道子钥'（子钥作废概念）与 Workflow C L103 '子钥作废流程成文后才放行'（流程须成文的放行前置），均非针对'根钥/签名私钥已进过 CI 变量'的处置步骤（停用→评估作废/轮换→复盘）。严格按技能作答时该链路缺失，需依赖通用安全知识补齐——按诚实纪律记 WARN。"
+    },
+    {
+     "assertion": "ESP32 eFuse/Secure Boot v2 机制细节路由 esp32-secureboot，不混在发布流程里展开",
+     "verdict": "pass",
+     "evidence": "SKILL.md L51 'ESP32 侧 eFuse / Secure Boot v2 / Flash 加密机制 → esp32-secureboot'；Hand-off 表 L72；description 尾句同旨。"
+    }
+   ],
+   "issues": [
+    "fw-release-gate 缺'签名私钥已泄露/已进 CI'的处置 runbook（停用→评估作废/轮换→复盘）。现状只有子钥作废概念（L49）与'作废流程成文'前置（L103）。建议在'签名与密钥治理'节补 3-4 行泄露响应步骤，即可闭合 fw-release-gate-02 断言 4。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-release-gate-03",
+   "routed_to": "fw-release-gate",
+   "expected_skills": [
+    "fw-release-gate"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单直接命中 'asks 多渠道能否共用一把签名密钥'。",
+   "answer_summary": "模式级决策：多渠道共用一把无派生关系的密钥 = 单点泄露全线沦陷，且无法只作废一个渠道。推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥不动根。一句话边界：对称短码方案=固件必须内含铸码/校钥能力，提取固件即等于拿到铸码能力；非对称=提取固件只有验签公钥、不可铸码——商业授权一律优先非对称。放行前置：子钥作废/轮换预案成文；每个渠道镜像各自过发布门禁（校验和门禁重算、命名含渠道段、HIL 徽章）。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出模式级决策：单根钥跨渠道 = 单点泄露全线沦陷，且无法只作废一个渠道",
+     "verdict": "pass",
+     "evidence": "SKILL.md Pitfalls L120 '不要多渠道共用一把无派生关系的密钥——单点泄露全线沦陷且无法只作废一个渠道；用根钥 + 渠道子钥'。"
+    },
+    {
+     "assertion": "推荐根钥+渠道子密钥派生：固件/设备只认根公钥，各渠道子钥签各自产物，泄露只作废该渠道子钥",
+     "verdict": "pass",
+     "evidence": "签名与密钥治理不变式 3（L49）'根密钥只签发渠道子密钥/子产物，某渠道泄露只作废该渠道子钥，不动根'；Workflow C 第 3 步 L103 '多渠道：根钥 + 渠道子钥'。"
+    },
+    {
+     "assertion": "一句话边界声明：对称短码方案=固件含铸码能力（提取固件即可铸码），非对称=提取固件不可铸码——商业授权优先非对称",
+     "verdict": "pass",
+     "evidence": "SKILL.md L51 '对称方案 = 固件必须内含铸码/校钥能力，提取固件即等于拿到铸码能力；非对称方案 = 提取固件只有验签公钥，不可铸码…商业授权一律优先非对称'；Pitfalls L126 同旨。"
+    },
+    {
+     "assertion": "放行前置：子钥作废/轮换预案成文；多渠道镜像各自走发布门禁（校验和、命名渠道段、徽章）",
+     "verdict": "pass",
+     "evidence": "Workflow C L103 '子钥作废流程成文后才放行'；发布门禁按产物逐个执行（release-checklist.md §1 遍历 BIN_DIR 全部产物，含 sha256 重算）；渠道段必须在文件名且 lint 可查（naming-and-versioning.md §3 L33）；徽章前置 Contracts L40。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "fw-release-gate-04",
+   "routed_to": "fw-release-gate",
+   "expected_skills": [
+    "fw-release-gate"
+   ],
+   "routing_match": true,
+   "routing_rationale": "清单命中 'artifact integrity (mandatory sha256 sidecar…SOURCE_DATE_EPOCH reproducible-build declaration)'；Determine Task Type 第 4 项 '完整性/复现性排障：sha256 对不上、两次构建不一致 → Workflow D'。",
+   "answer_summary": "不直接放行。先给不可复现的常见来源：构建/覆盖层时间戳与随机 ID、ipk 仓库版本漂移、构建环境（host 工具）差异。验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希；机制细节路由 openwrt-image-build 的 reproducible-build。门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic；发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "不直接放行：先说明不可复现的常见来源——覆盖层时间戳/随机 ID、ipk 仓库版本漂移、host 工具差异",
+     "verdict": "pass",
+     "evidence": "Workflow D L108 '仍不一致按\"环境差异 → 覆盖层时间戳/随机 ID → ipk 仓库漂移\"排查'（环境差异覆盖 host 工具差异）；门禁前提 L8 '任一失败即不发布'与 Workflow D L109 '无法复现就如实标注，不改口\"应该一样\"'共同构成不放行立场。"
+    },
+    {
+     "assertion": "给出验证方法：固定 SOURCE_DATE_EPOCH 重构建两次比对哈希，机制细节路由 openwrt-image-build 的 reproducible-build",
+     "verdict": "pass",
+     "evidence": "Workflow D L108 '固定 SOURCE_DATE_EPOCH 重构建两次比对哈希…（机制细节 → openwrt-image-build）'；Offline Baseline L33 与 Hand-off 表 L71 均把 SOURCE_DATE_EPOCH 机制侧显式路由 openwrt-image-build 的 reproducible-build reference。"
+    },
+    {
+     "assertion": "门禁立场：无法复现时在发布记录如实标注，禁止声称 deterministic",
+     "verdict": "pass",
+     "evidence": "Contracts L38 '无法复现时如实标注，禁止声称 deterministic'；Workflow D L109 '结论写入发布记录——无法复现就如实标注，不改口\"应该一样\"'。"
+    },
+    {
+     "assertion": "发布记录必须写明 SOURCE_DATE_EPOCH 取值与来源，作为发布物完整性契约的一部分",
+     "verdict": "pass",
+     "evidence": "Contracts L38 '可复现构建声明：发布记录写明 SOURCE_DATE_EPOCH 取值与来源'——位于'Contracts（发布物契约）'节，即发布物完整性契约本体。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-peripherals-01",
+   "prompt": "别跟我讲原理，直接告诉我 ESP32-C3 的 I2C 默认引脚是哪两个号，我照着接线就行。",
+   "routed_to": "esp32-peripherals",
+   "expected_skills": [
+    "esp32-peripherals"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter 明确覆盖 'ask which pins to use on a given ESP32 chip' 且自带 'REFUSES to quote default pin numbers for a chip from memory'，与本题一字不差。",
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "refusal：拒绝编造'C3 的 I2C 默认引脚号'——ESP-IDF 引脚多可矩阵映射，没有跨板统一的默认值，反幻觉红线",
+     "verdict": "pass",
+     "evidence": "esp32-peripherals/SKILL.md L89（Pitfalls 1）原文点名本题：'不要回答\"某芯片的 I2C 默认引脚号\"这类问题而不核验——ESP-IDF 多数引脚可矩阵映射，没有跨板统一的\"默认\"，必须 datasheet + 用户原理图确认（典型 refusal 场景）'；L8（硬件契约优先：引脚一律 datasheet/原理图为准，禁止编造）；L36（Contracts：不确定即停，禁止给'常见值'）。"
+    },
+    {
+     "assertion": "给出核验路径：芯片 datasheet/技术参考手册的 IO MUX 章节 + 用户板原理图确认实际连接",
+     "verdict": "pass",
+     "evidence": "esp32-peripherals/SKILL.md L36（读 datasheet/技术参考手册/IO MUX 表或板原理图）；Workflow 1 L67（'打开该芯片 datasheet 的 IO MUX/引脚定义章节，列出候选引脚'）、L68（'对照板原理图确认引脚实际连接与上/下拉电阻现状'）。"
+    },
+    {
+     "assertion": "说明工程侧如何指定引脚（驱动配置参数/menuconfig），并提醒避开 Strapping 引脚、其值禁止编造",
+     "verdict": "warn",
+     "evidence": "Strapping 侧充分：SKILL.md L37（'禁止编造 Strapping 引脚值；涉及时先查 datasheet 再接线'）、L67（'记录哪些是 Strapping 引脚并避开'）、L83（Gate：Strapping 引脚未被误用）。但'工程侧如何指定引脚'的具体机制（驱动配置参数字段或 menuconfig 项）正文无任何小节说明，仅 frontmatter L3 一笔带过（'routes to datasheet + menuconfig/runtime verification'）；L69 只到'写成清单给用户确认，再写代码'即止。按技能作答需助手自行从 IDF API 补齐配置写法，指引存在但薄弱。"
+    },
+    {
+     "assertion": "不接受'照网上教程接线'替代 datasheet 核验（教程可能对应其他芯片/模组）",
+     "verdict": "pass",
+     "evidence": "esp32-peripherals/SKILL.md L70：'若 datasheet 与网上教程冲突：以 datasheet 为准，并提醒教程可能对应不同芯片'。"
+    }
+   ],
+   "issues": [
+    "WARN（断言3）：正文（Workflow 1 / Contracts）未给出工程侧指定引脚的具体机制（驱动配置参数或 menuconfig 项），相关措辞仅出现在 frontmatter L3；建议在 Workflow 1 增补一步'在驱动初始化配置中写入经核验的引脚号'或指向 bus-quickref 的配置要点。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-peripherals-02",
+   "prompt": "用最新版 ESP-IDF 接一个温湿度传感器到 I2C 上，该用哪个驱动头文件？我网上找的例程用的是 driver/i2c.h，编译说找不含。",
+   "routed_to": "esp32-peripherals",
+   "expected_skills": [
+    "esp32-peripherals"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter 显式收录 'driver headers like i2c_master.h' 与 'I2C/SPI/UART/传感器接线'，精确命中。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "指出 v6.x 新式 I2C master 驱动为 driver/i2c_master.h（esp_driver_i2c 组件，2026-09-02 官方 stable 文档核验），网上 v5 例程接口已过时",
+     "verdict": "pass",
+     "evidence": "SKILL.md L31（'driver/i2c_master.h（esp_driver_i2c 组件）为官方 stable 文档当日核验的 I2C master 新接口'，基线 2026-09-02 见 L30）；决策表 L46；bus-quickref.md L10（含 CMakeLists 'REQUIRES esp_driver_i2c'，标'已核验'）。旧接口定性：SKILL.md L8/L90（legacy 在 v6.0 已移除）、bus-quickref L11（'I2C legacy：新式页已不收录'）——可明确告知 driver/i2c.h 为已移除的旧接口。"
+    },
+    {
+     "assertion": "传感器地址 7 位/8 位写法、速率上限按器件手册核对，不替用户编造地址",
+     "verdict": "pass",
+     "evidence": "SKILL.md L39（Contracts 器件侧：'I2C 从机地址……以外设器件手册为准'）；Workflow 2 L75（'核对 7 位/8 位地址写法、速率是否超器件上限'）；Pitfall L92；bus-quickref L25（'主频从器件手册上限取保守值……7 位地址与 8 位写法不要混用'）。"
+    },
+    {
+     "assertion": "上拉与电气检查先行：开漏总线需上拉，读板原理图确认是否已有",
+     "verdict": "pass",
+     "evidence": "SKILL.md L74（Workflow 2 '先电气后代码：供电、共地、上拉……'）、L68（原理图确认上/下拉现状）、L38（'I2C 是否需要外部上拉按总线电气计算'）；bus-quickref L26（'I2C 开漏总线，按总线电容与速率核算上拉阻值；芯片内部上拉偏弱，外置上拉更可靠'）。"
+    },
+    {
+     "assertion": "要求无硬件证据时只标 Build Verification Only，不声称'通信正常'",
+     "verdict": "pass",
+     "evidence": "SKILL.md L84（'总线通信有证据：器件应答/正确数据/示波器波形，三者之一才算通'）、L85（'无硬件证据时标注 Build Verification Only'）；bus-quickref L44。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-peripherals-03",
+   "prompt": "我把工程从 IDF v5.5 升到 v6 之后，ADC 读电池电压的代码全飘红，driver/adc.h 里的函数都没了，怎么办？",
+   "routed_to": "esp32-peripherals",
+   "expected_skills": [
+    "esp32-peripherals",
+    "esp32-idf"
+   ],
+   "routing_match": true,
+   "routing_rationale": "凭清单存在双命中：esp32-peripherals（'ADC 采样'、'legacy drivers removed in v6.0'）承接具体 ADC 驱动问题为主；esp32-idf（'v5→v6 migration of removed legacy drivers'、'v5 工程升级 v6 编译报错'）承接工程迁移。主路由 esp32-peripherals 与 expected[0] 一致。",
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "定位根因：v6.0 移除了 legacy ADC 驱动（基线高置信），必须改用新接口",
+     "verdict": "pass",
+     "evidence": "adc-caveats.md L8（'v6.0 已移除 legacy ADC 驱动（基线高置信）——v5 老代码里的 legacy ADC 调用升 v6 必然报错，改用当前新接口'）、L31（排障表行'升级 IDF 后编译报错 | legacy 驱动被移除（v6.0），换新接口'）；SKILL.md L31/L49/L90。"
+    },
+    {
+     "assertion": "ADC 新接口确切头文件/API 名标注'运行时核验'（本机 IDF 源码树 find + 官方 ADC 页），不凭记忆背 API",
+     "verdict": "pass",
+     "evidence": "adc-caveats.md L9-13（'新接口的确切头文件与 API 名：以本机 IDF 源码树与官方 API 参考（ADC 页）为准（运行时核验）'+ find 命令）；SKILL.md L32（'其余外设头文件名未逐个抓取——引用时标\"运行时核验\"，不凭记忆补全'）；adc-caveats L42-43 反幻觉提示；L15（先 idf.py --version 区分 v5/v6）。"
+    },
+    {
+     "assertion": "工程层面的版本与迁移策略（依赖/迁移指南）移交 esp32-idf 的 v5-to-v6 迁移流程（handoff）",
+     "verdict": "warn",
+     "evidence": "移交语义有支撑但不显式：frontmatter L3（'project/build issues to esp32-idf'）；Hand-off 表 L57 仅一行'工程骨架/构建烧写/分区表 → esp32-idf'，无'版本迁移/工程升级'专行；正文只有 SKILL.md L99 的官方 Migration Guides 链接与 L30'驱动迁移事实以日期化基线为准'。'v5→v6 迁移流程'作为整体流程定义在 esp32-idf（其 frontmatter 明示），esp32-peripherals 正文未写明对该场景的移交触发条件；若助手只读正文 Hand-off 表，可能漏移交。"
+    },
+    {
+     "assertion": "量程/衰减档按芯片 datasheet 核验，衰减与非线性的逐芯片数值不写死",
+     "verdict": "pass",
+     "evidence": "adc-caveats.md L4（'逐芯片的量程/衰减档位/校准系数本文件不给数——以芯片 datasheet 与本机 IDF API 为准'）、L19（'衰减档位与输入电压上限逐芯片不同——先查 datasheet 的 ADC 特性章节，再选衰减档；不要按默认档能用写死'）、L20（非线性常态）、L42-43（反幻觉：位宽/衰减表/校准公式不写死）；电池场景 L23（分压电阻精度、量程落档确认）。"
+    }
+   ],
+   "issues": [
+    "WARN（断言3）：esp32-peripherals 正文 Hand-off 表（L53-62）缺少'版本迁移/工程升级 → esp32-idf'显式行，v5→v6 移交仅靠 frontmatter L3 与 esp32-idf 清单措辞隐式成立；建议在 Hand-off 表或 adc-caveats 排障表补一行显式移交。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-variants-01",
+   "prompt": "我要做一个支持 Matter 的智能灯，需要 Thread 和 Zigbee，最好还能连 Wi-Fi，选哪颗 ESP32？另外有款产品只要 Zigbee 不用 Wi-Fi，能用更省电的吗？",
+   "routed_to": "esp32-variants",
+   "expected_skills": [
+    "esp32-variants"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter：'asking which ESP32 to use for Thread, Zigbee, Wi-Fi 6, BLE-only'——Thread/Zigbee/Wi-Fi 组合选型是 esp32-variants 的字面触发条件。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "按矩阵硬过滤：Wi-Fi + BLE + 802.15.4（Thread/Zigbee）三全 → ESP32-C6；只要 Zigbee/Thread 不要 Wi-Fi → ESP32-H2（BLE 5 + 802.15.4，Thread 1.3/Zigbee 认证）",
+     "verdict": "pass",
+     "evidence": "chip-matrix.md L14（C6：'有（802.11ax，Wi-Fi 6）| BLE 5 | 有（Thread/Zigbee）'）、L15（H2：'无 Wi-Fi | BLE 5 | 有（Thread 1.3 / Zigbee 认证）'）；SKILL.md L46-47 矩阵同数据；selection-tree.md L11-12（'还要 Wi-Fi → ESP32-C6……不需要 Wi-Fi → ESP32-H2'）；省电起点 selection-tree L43（'Thread/Zigbee 纯终端（无 Wi-Fi）| H2 | 96 MHz，功耗与成本优先'）；SKILL.md L63 硬过滤步骤。"
+    },
+    {
+     "assertion": "走决策树路径并能回指（selection-tree），结论不超出矩阵事实",
+     "verdict": "pass",
+     "evidence": "SKILL.md L64（Workflow 步骤 3 '决策树收敛（见 selection-tree.md）'）；Validation Gate L69（'选型结论必须能回指矩阵某一行 + 决策树某条路径，且需求三要素逐项对上'）；selection-tree L24（收敛次序：射频硬过滤 → 算力/核数 → 成本/封装）。"
+    },
+    {
+     "assertion": "明确 Matter/Thread 协议栈实现属后续工程问题，芯片确定后移交 esp32-idf（handoff 语义）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L54（'选定芯片后建工程/迁移构建 → esp32-idf'）、L65（Workflow 步骤 4 '……再移交 esp32-idf 建工程'）、L56（'Thread/Zigbee 协议栈实现细节 → 官方 ESP-IDF 文档（超出本包范围时说明）'）。注：'Matter'字面在技能文件中未出现，协议栈边界以 Thread/Zigbee 条目覆盖，但移交语义完整。"
+    },
+    {
+     "assertion": "引用能力事实带'截至 2026-09-02'基线口径，不脑补未列芯片细节",
+     "verdict": "pass",
+     "evidence": "chip-matrix.md L4（基线走读 2026-09-02）、L39（'引用本矩阵时带\"截至 2026-09-02\"'）；SKILL.md L29（日期化基线）、L79（Pitfall 5：中置信条目 C5/S31 只提示存在不给结论）；chip-matrix L21-23。"
+    }
+   ],
+   "issues": [
+    "备注（非缺陷）：'Matter' 一词未在 esp32-variants 任何文件出现；技能以 Thread/Zigbee 能力覆盖该需求且判定不受影响，但若用户追问 Matter 协议栈本身，技能只能指向 L56 的'官方 ESP-IDF 文档'。可作为后续增强（在 description 或 selection-tree 增加 Matter 关键词）。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-variants-02",
+   "prompt": "ESP32-C3 最低需要哪个版本的 ESP-IDF 才能开发？网上说法不一样，你直接告诉我个准数。",
+   "routed_to": "esp32-variants",
+   "expected_skills": [
+    "esp32-variants"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter 双重命中：'verify minimum supported ESP-IDF versions at runtime instead of fabricating them' 与红线 'Do NOT state per-chip minimum ESP-IDF versions (UNVERIFIED)'。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "refusal：拒绝写死'最低 IDF 版本'——基线明确该对照表 UNVERIFIED，官方无合并对照表",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8（'各芯片\"最低 IDF 版本\"为 UNVERIFIED——本 Skill 拒绝写死，只给官方核验方法'）；chip-matrix.md L32-34（'未找到官方合并对照表，禁止写死\"最低 vX.Y\"'）；SKILL.md L75（Pitfall 1）；Validation Gate L70（'\"该芯片最低需要 IDF vX.Y\"这类结论不得出现'）——refusal 是技能的硬性输出要求。"
+    },
+    {
+     "assertion": "给出三步运行时核验法：stable 文档按 target 切换（/esp32c3/get-started/）→ GitHub release notes 查新增支持 → 本机 idf.py set-target esp32c3 + build 实测",
+     "verdict": "pass",
+     "evidence": "selection-tree.md L26-34 逐条对应：L30（stable 文档按 target 切换，示例 URL 正是 esp32c3）、L31（GitHub release notes 查新增/preview 支持）、L32（'idf.py set-target <target> 成功生成 sdkconfig 且 idf.py build 通过'）。"
+    },
+    {
+     "assertion": "说明'文档支持 ≠ 本机版本支持'，以实测为准",
+     "verdict": "pass",
+     "evidence": "selection-tree.md L32 原文：'文档支持 ≠ 本机版本支持'；L34 回答模板以'本机请以 idf.py set-target 实测为准'收尾。"
+    },
+    {
+     "assertion": "不用'网上说法'或模型记忆充当权威来源",
+     "verdict": "pass",
+     "evidence": "selection-tree.md L26 标题'（禁止背答案）'；SKILL.md L25（'按 selection-tree 的官方核验法确认，不凭记忆'）、L75；Prompt 中'网上说法'在技能框架下只能被替换为三步核验法输出。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-variants-03",
+   "prompt": "听说 ESP32-P4 性能最强，我想拿它做一个直接连 Wi-Fi 6 的摄像头网关，可行吗？",
+   "routed_to": "esp32-variants",
+   "expected_skills": [
+    "esp32-variants"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter：'comparing ESP32 variants, asking which ESP32 to use for … Wi-Fi 6'；P4 射频能力属家族对比范畴。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "纠正高频错误：P4 无片上射频，不能自己连 Wi-Fi（基线点名错误点）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8（高频错误点第一项'P4 无片上射频'）；chip-matrix.md L16（P4 行'无片上射频'）、L27（高频错误点 1 'P4 无片上射频——选 P4 意味着无线要靠伴生芯片方案'）；SKILL.md L76（Pitfall 2：'不要说\"P4 可以自己连 Wi-Fi\"'）。"
+    },
+    {
+     "assertion": "给正确路径：P4 经 ESP-Hosted/ESP-AT 用 C/S 系列芯片作伴生获得无线能力，架构成本需评估",
+     "verdict": "pass",
+     "evidence": "SKILL.md L35（Contracts：'P4 经 ESP-Hosted/ESP-AT 用 C/S 系列作伴生'，且'伴生芯片方案要显式说明'）；chip-matrix.md L18（'官方页原文，高置信'）；selection-tree.md L20（'无线主机（高性能应用核，Wi-Fi 靠伴生）→ ESP32-P4 + ESP-Hosted/ESP-AT'）。'成本需评估'由'方案要显式说明'+决策树成本维度（L24 收敛次序）支撑，属自然推论。"
+    },
+    {
+     "assertion": "Wi-Fi 6 需求指向 C6（802.11ax），对比单芯片方案与 P4+伴生方案",
+     "verdict": "pass",
+     "evidence": "SKILL.md L46（C6 行'Wi-Fi 6 (802.11ax) + BLE 5 + 802.15.4'）；chip-matrix L14；selection-tree L42（'Thread/Zigbee 网关或路由器 | C6 | 兼有 Wi-Fi 6'）与 L20（P4+伴生）——两条路径均在决策树内，可支撑单芯片 vs P4+伴生的对比结论；SKILL.md L78 Pitfall 4 提醒 C3/C6 不能混（802.11ax 只有 C6）。"
+    },
+    {
+     "assertion": "不做超出矩阵的细节断言（外设数量/GPIO 数等），引导查官方选型页与数据手册",
+     "verdict": "pass",
+     "evidence": "chip-matrix.md L38（'外设数量、GPIO 总数、封装、温度等级、供货状态等一律引导用户查官方选型页与数据手册，不在本文件内给数'）；selection-tree L49；SKILL.md L36（'封装/外设/供货由用户按官方选型页与模组数据手册确认'）。摄像头/ISP 细节同样不在矩阵范围，答案被约束在射频与核数事实。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-wifi-provision-01",
+   "prompt": "我们要量产一款 ESP32-C3 的智能插座，配网方式还没定，产品经理说越简单越好，你们建议怎么选？",
+   "routed_to": "esp32-wifi-provision",
+   "expected_skills": [
+    "esp32-wifi-provision"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter：'asks SmartConfig 还是 BLE 配网 / Unified Provisioning 怎么接'+'量产'场景（'production security red lines'）——量产配网选型是字面主路径（Determine Task Type 1）。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出四种官方方式选型对比（Unified Provisioning / SmartConfig / DPP / protocomm），默认推荐 Unified Provisioning + Security 2",
+     "verdict": "pass",
+     "evidence": "SKILL.md L44-53 四方式选型表（基线 §7 高置信）；L48（'Unified Provisioning（推荐）……Security 0/1/2 可选（默认选 2）；有官方 iOS/Android App'）；Workflow L86（'量产默认 Unified Provisioning + Security 2'）；provisioning-comparison.md §1 判据表 L7-15。"
+    },
+    {
+     "assertion": "传输层按 BLE vs SoftAP 给出判据：C3 支持 BLE，BLE 传输约需 110KB RAM，需确认 App 门槛（官方 ESP BLE Provisioning / ESP SoftAP Provisioning）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L28（'BLE 传输约需 110KB RAM（基线高置信）'）、L27（Preflight：'能否要求用户装 ESP BLE Provisioning / ESP SoftAP Provisioning 官方 App？'）；provisioning-comparison L12（RAM 行）、L20-21（BLE(GATT) vs SoftAP 取舍：App 直连体验 vs 无蓝牙芯片/S2 路径、手动切热点）。'C3 支持 BLE'：本技能 L26 要求先核对芯片无线能力，交叉确认来自 esp32-variants chip-matrix L13（C3：BLE 有）——包内证据链完整。"
+    },
+    {
+     "assertion": "明确告知 SmartConfig 属 legacy、可靠性弱，新产品不建议用于量产",
+     "verdict": "pass",
+     "evidence": "SKILL.md L49（选型表：'SmartConfig | legacy……可靠性弱、依赖网络环境，新产品不建议'）；L106（Pitfall 5：'不要给新产品选 SmartConfig 并承诺可靠性——它是存量兼容选项'）；provisioning-comparison §3 L26-28（仅存量兼容时选，且不承诺成功率）。"
+    },
+    {
+     "assertion": "引用配网状态机（未配网→配网中→已配网→凭据失效重配），并要求设计凭据失效后的重配入口",
+     "verdict": "pass",
+     "evidence": "SKILL.md L57-66（状态机图：UNPROVISIONED → PROVISIONING → PROVISIONED → RE-PROVISION）、L68（必须持久化'是否已配网'）；provisioning-comparison §4 L31-36（触发源：改密/换路由器；'提供\"主动清凭据进配网模式\"的物理入口（长按按键等）'）。"
+    },
+    {
+     "assertion": "提示 NVS 持久化凭据为'运行时核验'项，量产前须真机断电重启验证",
+     "verdict": "pass",
+     "evidence": "SKILL.md L34（'NVS 持久化凭据：基线标注\"运行时核验\"……必须在真机验证重启后凭据仍在（Validation Gate 3）'）；L96（Gate 3：'断电重启后设备自动重连……必须在目标真机实测通过后才可声称支持'）；L105（Pitfall 4）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-wifi-provision-02",
+   "prompt": "帮我在 ESP32-S3 项目里接 BLE 配网，用官方组件，安全方案按你们推荐来，该怎么一步步做？",
+   "routed_to": "esp32-wifi-provision",
+   "expected_skills": [
+    "esp32-wifi-provision"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter：'integrates the network_provisioning component' 与 Determine Task Type 2（'已定方式要实现'）字面命中。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "选择 Unified Provisioning + BLE(GATT) + Security 2（SRP6a + AES-256-GCM，推荐档）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L48（传输 BLE(GATT)；'默认选 2'）、L86；security-scheme.md L11（'Security 2 | SRP6a 认证 + AES-256-GCM 会话加密 | 推荐默认'）、L15（'新产品一律 Security 2'）。S3 有 BLE（无 Classic）：经 esp32-variants chip-matrix L12 交叉确认；本技能 L39/L104 的反例红线（S2 无蓝牙）反向佐证传输层必须先核对芯片。"
+    },
+    {
+     "assertion": "通过 idf.py add-dependency 接入现行组件 network_provisioning，并说明准确包名/版本以 registry 运行时查询为准",
+     "verdict": "pass",
+     "evidence": "SKILL.md L87（'idf.py add-dependency <network_provisioning 组件名=版本>（准确命名空间与版本以 registry 运行时查询为准，写入 idf_component.yml）'）；L29 Preflight（现行组件 network_provisioning vs 旧 wifi_provisioning）；provisioning-comparison §5 L41-43。"
+    },
+    {
+     "assertion": "实现配网状态机并持久化配网状态，失败回报具体错误码而非静默重试",
+     "verdict": "pass",
+     "evidence": "SKILL.md L88（Workflow 4：'持久化配网状态……失败必须回报具体错误（错误码透传到 App），不静默重试'）；状态机 L57-68；L107（Pitfall 6：'不要吞掉配网失败错误码'）。"
+    },
+    {
+     "assertion": "验证门禁含：正常配网、错误密码负路径、断电重启自动重连（NVS 运行时核验）、日志无明文凭据",
+     "verdict": "pass",
+     "evidence": "SKILL.md L94-97 四道 Gate 一一对应：Gate 1 正常路径（连上并在线确认）、Gate 2 故意输错密码回报错误、Gate 3 断电重启自动重连（明示'运行时核验项'）、Gate 4 凭据不以明文出现在串口日志；security-scheme L28-29（错误口令被拒 + 日志抽查）。"
+    },
+    {
+     "assertion": "无真机时标注 Build Verification Only",
+     "verdict": "pass",
+     "evidence": "SKILL.md L98（Gate 5：'无真机时：所有结论标 Build Verification Only，不得声称\"配网已验证\"'）；security-scheme L31。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-wifi-provision-03",
+   "prompt": "把路由器的 SSID 和密码直接写死在固件里不就不需要配网了吗？我们产品就这么干，最省事。",
+   "routed_to": "esp32-wifi-provision",
+   "expected_skills": [
+    "esp32-wifi-provision"
+   ],
+   "routing_match": true,
+   "routing_rationale": "frontmatter 红线原文：'production security red lines（不把 SSID/密码写死固件、Production 禁 Security 0）'——该题是技能显式声明的 refuse 场景。",
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "明确拒绝写死凭据的做法（refusal）：量产镜像带 SSID/密码 = 每台设备共享同一凭据且无法适配用户各自的路由器",
+     "verdict": "pass",
+     "evidence": "SKILL.md L102（Pitfall 1：'不要把 SSID/密码写死进固件（源码、Kconfig 默认值、测试固件都算）——量产镜像带凭据等于把用户网络卖掉'）；L40（Contracts：'SSID/密码不得写死在固件源码或 sdkconfig 默认值里随镜像分发'）。'共享同一凭据'的安全后果由'把用户网络卖掉'与 security-scheme 红线覆盖；'无法适配用户路由器'为功能性推论，助手可自然补出。"
+    },
+    {
+     "assertion": "指出安全红线：凭据不进源码/Kconfig 默认值/仓库，日志不落明文凭据",
+     "verdict": "pass",
+     "evidence": "security-scheme.md L21（红线 1：'源码、Kconfig 默认值、sdkconfig.defaults、单元测试 fixture 一律不允许出现真实凭据'）、L23（红线 3：'凭据不落日志……出现明文凭据 = 事故'）、L24（'不进仓库、不进 CI 明文'）；SKILL.md L103（Production 禁 Security 0）；L118（Privacy：示例与日志一律占位符）。"
+    },
+    {
+     "assertion": "给出正确替代：Unified Provisioning（推荐 Security 2）把凭据在运行时安全下发并持久化",
+     "verdict": "pass",
+     "evidence": "SKILL.md L48（UP 推荐、Security 2 默认）、L57-66 状态机（凭据下发路径）、L86（量产默认 UP + Security 2）；持久化路径 L68 + L34（NVS 标注运行时核验——替代方案陈述时会如实带此限定）。"
+    },
+    {
+     "assertion": "不提供任何'写死凭据'的实现示例",
+     "verdict": "pass",
+     "evidence": "三份文件（SKILL.md / provisioning-comparison.md / security-scheme.md）通读无任何硬编码凭据示例；security-scheme §3 标题即'红线（违反即拒答/打回）'；SKILL.md L118 Privacy 要求凭据只以占位符出现——技能结构上使该断言必然满足。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-debug-01",
+   "routed_to": "esp32-debug",
+   "expected_skills": [
+    "esp32-debug"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "先走复位原因分类决策树：看门狗复位 vs panic vs 掉电/供电三类，判据与证据链各不相同，不预设结论",
+     "verdict": "pass",
+     "evidence": "esp32-debug/SKILL.md L12（Determine Task Type 1：随机重启→crash-triage 决策树→Workflow B）、L65、L86-91（Workflow B）；references/crash-triage.md §1 三类复位原因定位表（panic/看门狗/掉电-供电，'判据与证据链各不相同'的表结构即证据来源按顺序取）、§2 随机重启排查决策树、§4 常见误判（'重启了=看门狗'列为误判）。"
+    },
+    {
+     "assertion": "指出证据缺失根因：未配置 coredump 时崩溃现场会被下一次重启覆盖；先补 coredump 配置（flash 或 UART 目的地）再等复现",
+     "verdict": "pass",
+     "evidence": "SKILL.md L27（Preflight 4：'coredump 没配置就没了证据'）、L114（Pitfall 5：'证据早被下一次重启覆盖；先补配置再等复现'）、L26（目的地 flash 或 UART）；crash-triage.md §2 步骤 2（'否 → 证据已被覆盖：先补配置（coredump 分区 + 目的地），再造复现条件'）。"
+    },
+    {
+     "assertion": "给出提取与分析命令：idf.py coredump-info 概览 → idf.py coredump-debug 符号化，且强调须用与设备一致版本的 ELF",
+     "verdict": "pass",
+     "evidence": "SKILL.md L38（Contracts 2：分析用 idf.py coredump-info / coredump-debug）、L60-61 与 L83（崩溃处理流/Workflow A 同序）、L113（Pitfall 4：'不要用与目标设备不同版本的 ELF 去符号化 coredump——地址对不上，结论全错'）、L82（回溯地址需与固件版本匹配）。"
+    },
+    {
+     "assertion": "软件侧只收集硬件嫌疑证据（重启与负载/外设动作的相关性、多台同规律性），不下'供电问题'结论",
+     "verdict": "pass",
+     "evidence": "SKILL.md L77（refusal 边界：不输出'这就是电源问题'，只给嫌疑证据）、L90（Workflow B 3）、L115（Pitfall 6）；crash-triage.md §2 步骤 3（'重启是否与负载峰值/外设动作/供电切换时刻相关''同批次多台是否同规律''软件侧只收证据，不下结论'）、§4（'软件侧只能提嫌疑；定论必须实测'）。"
+    },
+    {
+     "assertion": "建议加心跳埋点与复位原因持久化记录，缩小无声重启时间窗",
+     "verdict": "pass",
+     "evidence": "crash-triage.md §3.2（'埋点日志：关键阶段心跳打印，缩小无声重启的时间窗'）、§3.3（'记录启动原因：每次启动把复位原因写入持久日志'）；SKILL.md L91（Workflow B 4：加日志埋点 + 开 coredump 等复现）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-debug-02",
+   "routed_to": "esp32-debug",
+   "expected_skills": [
+    "esp32-debug",
+    "fw-hil-testing"
+   ],
+   "routing_match": true,
+   "verdict": "warn",
+   "assertion_results": [
+    {
+     "assertion": "确认软件侧证据链已穷尽且指向硬件嫌疑（重启与电机启动强相关、多台同规律），但明确不下'供电问题'定论——软件侧只能给嫌疑证据",
+     "verdict": "pass",
+     "evidence": "crash-triage.md §1 分类纪律（'软件日志干净 + 与负载强相关 = 硬件嫌疑，不等于硬件定论'）、§1 掉电/供电类行（重启时机与负载/外设动作相关）、§2 步骤 3；SKILL.md L77、L90、L115。电机启动=负载相关、多台同规律正是 §2 步骤 3 要求收集的两类证据。"
+    },
+    {
+     "assertion": "hand-off fw-hil-testing：真机在环用电源测量/示波器验证电压跌落或复位信号异常，出硬件验收证据",
+     "verdict": "pass",
+     "evidence": "crash-triage.md §2 步骤 3（'带上证据清单 → hand-off fw-hil-testing（示波器/电源测量，真机定论）'）、§1 掉电类行下一步同；SKILL.md L71（Hand-off 表：已定位供电/电源/硬件问题→hand-off fw-hil-testing 真机在环验证）、L90；fw-hil-testing 清单描述即'证据链中枢'。"
+    },
+    {
+     "assertion": "提示可同时准备的软件侧缓解观察项（如电机启动与敏感操作的时序错开）仅作假设，不以未测量结论交付",
+     "verdict": "warn",
+     "evidence": "前半句的诚实框架被强支持：SKILL.md L77（嫌疑≠定论）、L106（无真机标 Pending HIL）、crash-triage.md §3（可同时准备的软件侧证据加固：coredump 常开/埋点/启动原因记录）、§3.4（扰动逐项加减找触发因子）。但技能未提供任何'软件侧缓解'类内容（如电机启动与敏感操作时序错开这类假设性缓解观察项）——该元素只能靠模型自行外推，技能正文既未给出也未示范'缓解建议须降级为假设'的表述模板，跨运行一致性无保障。"
+    },
+    {
+     "assertion": "修复后的定论须有实测记录；无硬件证据标注 Pending HIL",
+     "verdict": "pass",
+     "evidence": "SKILL.md L106（Validation Gate 5：'无真机/无现场：结论一律标 Build Verification Only / Pending HIL'）、L84（无复现条件明确说未复现验证，不声称已修复）、L77；crash-triage.md §3.4（涉硬件测量即属 fw-hil-testing）、§2 步骤 4（硬件→fw-hil-testing 出验收证据后再谈量产）。"
+    }
+   ],
+   "issues": [
+    "esp32-debug-02 断言3 WARN：技能对'硬件嫌疑→fw-hil-testing'的诚实纪律覆盖完整，但缺少'软件侧缓解观察项（如时序错开）仅作假设'的内容支撑——crash-triage.md §3 只有证据加固手段（coredump/埋点/启动原因记录/扰动复现），无缓解类建议或其表述规范，该元素依赖模型外推。"
+   ],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-debug-03",
+   "routed_to": "esp32-debug",
+   "expected_skills": [
+    "esp32-debug"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "纠正：经典 ESP32 不支持 SWD，调试走 JTAG，需要外部适配器（如 ESP-Prog）——经典 ESP32 无内置 USB-Serial/JTAG（基线高置信）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L24（Preflight 1：经典 ESP32 无内置 USB-Serial/JTAG，需外部适配器（如 ESP-Prog）才能 JTAG；不支持 SWD（基线高置信））、L37（Contracts 1）、L111（Pitfall 2）；references/jtag-openocd.md §1（'不支持 SWD——排任何 SWD 调 ESP32 的任务都属误导，走 JTAG'、'经典 ESP32 无内置 USB-Serial/JTAG'）。"
+    },
+    {
+     "assertion": "给出正确路径：OpenOCD 随 IDF 安装，openocd -f board/<目标板>.cfg 启动，GDB 连接后验证断点/单步/变量查看",
+     "verdict": "pass",
+     "evidence": "SKILL.md L37、L97（Workflow C 3：openocd -f board/<目标板>.cfg）、L98 与 L105（断点/单步/变量查看各验证一次）；jtag-openocd.md §1（'OpenOCD 随 IDF 安装，无需另装；启动形如 openocd -f board/<目标板>.cfg'）、§3.2（'GDB 连接后验证三件事：断点命中、单步、变量查看'）。"
+    },
+    {
+     "assertion": "接线与 TCK 频率标注'以板与探测器件实测'，不编造具体引脚号或频率数值",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8、L33、L39（Contracts 3：JTAG 接线引脚、TCK 频率引用官方板文档或实测，二选一）、L96、L112（Pitfall 3）；jtag-openocd.md §2 表（接线：按探测器件与目标板官方引脚文档逐根复核，'引脚定义本文件不列（防编造）'；频率：从保守值起试，'以板与探测器件实测为准'）、§5 反幻觉边界（不提供排针引脚号/TCK 具体频率数值）。"
+    },
+    {
+     "assertion": "若无探测器：提示运行时 GDB stub（CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME）可作无 JTAG 硬件的串口 GDB 手段",
+     "verdict": "pass",
+     "evidence": "SKILL.md L49（手段矩阵行：运行时 GDB stub | CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME | 无 JTAG 硬件的串口 GDB 调试 | 没有探测器的临时手段）、L32（Offline Baseline：只陈述 Kconfig 事实，不引具体文档页）、L116（Pitfall 7）；jtag-openocd.md §3.4、§4 选型表（'没有探测器，临时要 GDB → 运行时 GDB stub'）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-lowpower-01",
+   "routed_to": "esp32-lowpower",
+   "expected_skills": [
+    "esp32-lowpower"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "读 target 先行：先确认芯片（ESP32-C3）与现有 sdkconfig 睡眠配置，再谈策略",
+     "verdict": "pass",
+     "evidence": "esp32-lowpower/SKILL.md L21-22（Preflight：grep CONFIG_ESP_SLEEP/CONFIG_PM_ 与 CONFIG_IDF_TARGET）、L25（'读 target 先行：芯片型号决定唤醒源集合与 ULP 形态；没有芯片实物/工程 target 前，不回答哪些唤醒源可用'）。"
+    },
+    {
+     "assertion": "周期上报主策略 = deep sleep + RTC timer 唤醒（基线确认 µs 精度定时）；按钮事件叠加 EXT0/EXT1（RTC GPIO，仅认 RTC GPIO 集合，引脚不确定即停）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L77（Workflow A 决策表：周期上报→deep sleep + RTC timer 唤醒，µs 精度）、L78（按键/外部事件→EXT0/EXT1，注意 RTC GPIO 引脚集合限制）、L91（Workflow B 4：只认 RTC GPIO 集合，不确定即停）、L38（Contracts 2 六类唤醒源）；references/wakeup-sources.md §1 表（RTC Timer µs 精度/EXT0/EXT1）、L17（多源可叠加：timer 兜底 + EXT1 按键即醒）、§3、§4（引脚事实不确定即停）。"
+    },
+    {
+     "assertion": "跨睡眠小状态（上报计数/上次时间戳）放 RTC 内存保留；掉电不可丢的数据入睡前快照到 NVS，并说明两者取舍（跨睡眠找 RTC、跨掉电找 NVS、NVS 有写入寿命考量）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L43-53（专节决策表：跨换电池/掉电存活 RTC=否/NVS=是；适用行'睡眠计数器、上次上报时间戳'vs'配置、累计量、必须掉电不丢'；NVS'有写入寿命考量，别在高频循环里刷'；常见组合）、L82（Workflow A 3）；references/sleep-modes.md §3（决策口诀'跨睡眠找 RTC，跨掉电找 NVS；高频写入两边都别去'）。"
+    },
+    {
+     "assertion": "明确拒绝给深睡 µA 具体数字：基线标注 UNVERIFIED，续航测算必须用功率计板级实测电流做占空比加权，而不是数据手册转述值",
+     "verdict": "pass",
+     "evidence": "SKILL.md L40（Contracts 4：深睡电流数值=UNVERIFIED，基线仅确认 µA 数量级，'本 Skill 不把任何具体数值当事实输出'）、L95（Workflow C refusal 立场）、L100（续航≈容量÷占空比加权平均电流）、L107（Validation Gate 3：数据手册数字不作为验收依据）、L112、L117（Pitfall 1/6）；sleep-modes.md §4（'芯片裸值不是板级值'）。"
+    },
+    {
+     "assertion": "真机逐唤醒源触发验收与长跑功耗验收路由 fw-hil-testing；无真机结论标 Pending HIL",
+     "verdict": "pass",
+     "evidence": "SKILL.md L64（Hand-off：功耗实测/真机在环验收→fw-hil-testing）、L101（Workflow C 5：长跑与温度维度验收→fw-hil-testing；无真机标 Pending HIL）、L106（Validation Gate 2：每个配置的唤醒源逐一实测触发，无真机=Pending HIL）；wakeup-sources.md §5.1（逐源触发）、§5.4（无真机=Pending HIL，路由 fw-hil-testing）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-lowpower-02",
+   "routed_to": "esp32-lowpower",
+   "expected_skills": [
+    "esp32-lowpower"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "refusal 立场：拒绝把 10µA 这类转述数字当事实——基线仅确认深睡电流为 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA），具体数值标 UNVERIFIED 须运行时核验",
+     "verdict": "pass",
+     "evidence": "SKILL.md L40（Contracts 4 原文即'基线仅确认 µA 数量级（官方页只给 SPI Flash 待机 <30µA / Deep Power-Down <1µA）…本 Skill 不把任何具体数值当事实输出'）、L8、L95（'回答不是对，是拒绝把这个数字当事实'）、L112（Pitfall 1 点名'典型 10µA'）；sleep-modes.md §4 背景段与 §5 UNVERIFIED 清单第 1 条。"
+    },
+    {
+     "assertion": "解释数据手册值 ≠ 板级值：外设漏电、上拉电阻、LED、稳压器静态电流都会把实测电流放大数倍，'拆干净再测'也不代表产品真实配置",
+     "verdict": "pass",
+     "evidence": "SKILL.md L95（'数据手册值是芯片裸电流，不是你这块板的电流（外设漏电、上拉电阻、LED、稳压器静态电流都会数倍放大）'）、L98（Workflow C 2：板上所有外设按产品真实配置连接，'不要拆干净再测'）；sleep-modes.md §4（'放大数倍至数十倍'）、§4 步骤 2（'禁止拆干净再测——那测的是不该存在的乐观值'）。"
+    },
+    {
+     "assertion": "给出实测方法：功率计/源表串联供电回路、按产品真实外设配置、进入睡眠稳定 ≥5 分钟取平均电流、记录供电方式与板级配置",
+     "verdict": "pass",
+     "evidence": "SKILL.md L97-99（Workflow C 步骤 1-3 原文逐条对应：功率计/源表串联进供电回路+记录供电电压与供电方式；按产品真实配置；稳定 ≥5 分钟后记录平均电流，瞬时闪断值不作数）、L107（Validation Gate 3 留档：供电方式、板级配置、平均电流）；sleep-modes.md §4 步骤 1-3、5。"
+    },
+    {
+     "assertion": "续航算法：续航 ≈ 电池可用容量 ÷ 占空比加权平均电流（实测输入），缺实测输入的续航承诺不出口",
+     "verdict": "pass",
+     "evidence": "SKILL.md L100（Workflow C 4 公式原文一致）、L108（Validation Gate 4：'缺实测输入的续航承诺不出口'）、L117（Pitfall 6）、L84（没有实测值之前续航结论一律不出口）；sleep-modes.md §4.4-4.5（工作相电流一并占空比加权）。"
+    },
+    {
+     "assertion": "真机功耗/长跑/温度维度验收路由 fw-hil-testing，无真机标 Pending HIL",
+     "verdict": "pass",
+     "evidence": "SKILL.md L101（Workflow C 5）、L64（Hand-off 表）、L106；sleep-modes.md §4.6（'温度漂移、电池自放电、老化等长周期因素 → fw-hil-testing 长跑验收；未实测 = Pending HIL'）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-lowpower-03",
+   "routed_to": "esp32-lowpower",
+   "expected_skills": [
+    "esp32-lowpower"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "跨睡眠保存 → RTC 内存保留（醒来即得但换电池即失）；跨掉电存活 → NVS 快照（入睡前写入），两者取舍讲清，本例需求命中 NVS",
+     "verdict": "pass",
+     "evidence": "SKILL.md L43-53（决策表'跨换电池/掉电存活'行：RTC=否、NVS=是（flash 持久）；配置类数据适用 NVS；L53 常见组合'入睡前写一次 NVS'）；sleep-modes.md §3（RTC'换电池/掉电即失'、NVS'入睡前写，掉电不丢'）。配置变量+换电池存活的需求按决策表命中 NVS 快照。"
+    },
+    {
+     "assertion": "UART 唤醒 deep sleep 不在基线 6 类唤醒源（RTC Timer/Touch/EXT0/EXT1/ULP/deepsleep GPIO wake）内 → 标 UNVERIFIED，指引查官方 sleep_modes 文档运行时核验，不凭记忆答'可以'或'不可以'",
+     "verdict": "pass",
+     "evidence": "SKILL.md L38（Contracts 2：六类唤醒源原文列举；'基线未收录的唤醒手段（如 UART/蓝牙 wake）一律标 UNVERIFIED，不得写入答案'）；wakeup-sources.md §4（'UART 唤醒、蓝牙 wake 等基线未列举的唤醒手段：是否支持、支持条件，全部查官方 sleep_modes 页（运行时核验）'）；sleep-modes.md §5（UNVERIFIED 清单含'基线 6 类之外的唤醒手段（UART/蓝牙 wake 等）'，处理方式'查官方 sleep_modes/芯片数据手册或板级实测，二选一，不背记忆'）。"
+    },
+    {
+     "assertion": "按键/外部事件类唤醒建议回到 EXT0/EXT1（RTC GPIO 集合，具体引脚以芯片手册为准，不确定即停）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L78（决策表：按键/外部事件秒级唤醒→EXT0/EXT1）、L91（Workflow B 4：GPIO 类只认 RTC GPIO 集合，以芯片数据手册/官方引脚文档为准，不确定即停）、L116（Pitfall 5）；wakeup-sources.md §1 行 3/4、§3、§4。"
+    },
+    {
+     "assertion": "ULP 形态按芯片区分（ESP32=ULP-FSM，S2/S3=RISC-V ULP 或 FSM，C6/P4=LP 核），写 ULP 前先确认 target",
+     "verdict": "pass",
+     "evidence": "SKILL.md L39（Contracts 3 原文一致）、L25（读 target 先行）；wakeup-sources.md §2 表（ESP32=ULP-FSM；S2/S3=RISC-V ULP 或 FSM 核；C6/P4=LP 核 20/40 MHz）+ '写 ULP 程序前先确认 target'；sleep-modes.md §2。"
+    },
+    {
+     "assertion": "唤醒后用复位/唤醒原因查询打进启动日志，逐源真机触发验收，无真机标 Pending HIL",
+     "verdict": "pass",
+     "evidence": "SKILL.md L90（Workflow B 3：'唤醒后用复位原因/唤醒原因查询记录这次为什么醒，写进启动日志——没有唤醒原因日志的睡眠代码不算完成'）、L106（Validation Gate 2）；wakeup-sources.md §3（唤醒原因打进启动日志）、§5.1（逐源触发）、§5.4（无真机 = Pending HIL，路由 fw-hil-testing）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-ota-01",
+   "routed_to": "esp32-ota",
+   "expected_skills": [
+    "esp32-ota"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "读 target 先行：第一步用 idf.py partition-table 读目标板实际分区布局，之后再谈改造",
+     "verdict": "pass",
+     "evidence": "esp32-ota/SKILL.md L21（Preflight：idf.py partition-table '读 target 实际分区表——任何分区回答的起点'）、L25（'读 target 先行…拒绝编造分区偏移/大小'）、L89（Workflow A 1 第一步即读 target）。"
+    },
+    {
+     "assertion": "拒绝编造分区偏移：给出 OTA 最小 CSV 模板（nvs/otadata/phy_init/factory/ota_0/ota_1）时 Offset 留空走自动排布，最终布局以 idf.py partition-table 输出为准",
+     "verdict": "pass",
+     "evidence": "SKILL.md L42-58（'分区前提与最小 CSV 模板'节：六行 CSV 与断言命名逐一对应；'Offset 列全部留空 = 交由构建自动排布…不要手填记忆里的偏移值'；注释'最终布局以 idf.py partition-table 输出为准'）、L123（Pitfall 2）。"
+    },
+    {
+     "assertion": "说明 OTA 前提：至少 ota_0/ota_1 双槽 + otadata 分区，bootloader 按 otadata 的 ota_seq 选槽",
+     "verdict": "pass",
+     "evidence": "SKILL.md L36（Contracts 1 原文一致）；references/ota-state-machine.md §1（前两条：ota_0/ota_1 + otadata；bootloader 按 ota_seq 选槽，otadata 为空启动 factory）。"
+    },
+    {
+     "assertion": "给出 esp_ota_begin/write/end → esp_ota_set_boot_partition 顺序与 esp_ota_get_next_update_partition 轮转选槽",
+     "verdict": "pass",
+     "evidence": "SKILL.md L73（API 顺序原文：esp_ota_begin（OTA_SIZE_UNKNOWN）→ esp_ota_write → esp_ota_end → esp_ota_set_boot_partition；选槽用 esp_ota_get_next_update_partition() 轮转）、L91（Workflow A 3）；ota-state-machine.md §1（get_next_update_partition 按 ota_seq 轮转选非活动槽）、§3（步骤 2-5）。"
+    },
+    {
+     "assertion": "核心反陷阱：开启 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 后新映像必须显式调用 esp_ota_mark_app_valid_cancel_rollback()，否则重启即回滚；并给出断电回滚真机验收要求（Pending HIL → fw-hil-testing）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L71（'本技能第一反陷阱'原文：不调用=首次重启就回滚进旧版）、L92（Workflow A 4：不给确认留下次再说）、L93+L115（断电回滚验收→fw-hil-testing；Validation Gate 2 真机执行，无真机=Pending HIL）、L117（Validation Gate 4 断电中断升级）、L122（Pitfall 1）；ota-state-machine.md §2；rollback-checklist.md §3（'真机，Pending HIL until executed'、§3.4 断电中断项、§3.6 无真机移交 fw-hil-testing）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-ota-02",
+   "routed_to": "esp32-ota",
+   "expected_skills": [
+    "esp32-ota"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "首要怀疑 PENDING_VERIFY 未确认：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 开启后新映像未调用 esp_ota_mark_app_valid_cancel_rollback()，重启即回滚旧版",
+     "verdict": "pass",
+     "evidence": "SKILL.md L13（Determine Task Type 2：'升级后设备跑回旧版本：疑似回滚 → Workflow B（排障，先查 PENDING_VERIFY 未确认）'）、L71（'升级成功后设备又跑回旧版本的头号原因就是自检确认被遗漏'）、L96-98（Workflow B 1）；references/rollback-checklist.md §4 排障速查前两行（确认调用从未执行/忘写确认调用→PENDING_VERIFY 未确认→机制性回滚）。"
+    },
+    {
+     "assertion": "给出排查顺序：确认调用是否存在且必然执行（自检卡死/崩溃在确认前）→ menuconfig 回滚开关 → 串口日志/coredump 证据（esp32-debug）",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow B L96-100 顺序与断言完全一致：step 1 '新镜像里是否存在且必然执行的 esp_ota_mark_app_valid_cancel_rollback()？（自检挂死/任务阻塞会导致确认永不执行）'→ step 2 '确认 menuconfig：CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE'→ step 3 '读证据：串口启动日志 + esp32-debug（coredump/复位原因）定位新镜像是否崩溃在确认之前'→ step 4 对照 rollback-checklist 重演。"
+    },
+    {
+     "assertion": "解释这是机制行为而非故障：NEW→PENDING_VERIFY→未确认即 INVALID 回滚，有效性状态存于 otadata 不在镜像内",
+     "verdict": "pass",
+     "evidence": "SKILL.md L99（'开启后语义就是未确认即回滚，属机制行为非故障'）、L62-69（状态机：NEW→PENDING_VERIFY→未确认→INVALID 回滚）、L37（Contracts 2：'镜像有效性状态存于 otadata（不在镜像内）'）；ota-state-machine.md §2 图（应用从未确认→INVALID→重启回滚）、§1（'镜像有效性状态存于 otadata，不在镜像内'）。"
+    },
+    {
+     "assertion": "建议按 rollback-checklist 重新演练升级流程验证修复",
+     "verdict": "pass",
+     "evidence": "SKILL.md L101（Workflow B 4：'对照 rollback-checklist 的验收单重演一遍升级流程'）；references/rollback-checklist.md §3 回滚验收（正向/显式失败/未确认/中断四项 + 每项记录）即演练清单。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-ota-03",
+   "routed_to": "esp32-ota",
+   "expected_skills": [
+    "esp32-ota",
+    "esp32-idf"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "纠正误区：OTA 本质需要网络通道（esp_https_ota 走 HTTPS 拉取镜像），离线设备无法 OTA——明确拒绝'离线也能 OTA'的前提",
+     "verdict": "pass",
+     "evidence": "SKILL.md L15（Determine Task Type 4：'没网也要升级/离线刷机：超界 → refusal 路由 esp32-idf'）、L80（Hand-off：'离线设备升级（无网络）| refusal：OTA 本质需要网络'）、L39（Contracts 4：esp_https_ota 走 HTTPS）、L126（Pitfall 5：'不要承诺离线设备也能 OTA'）。"
+    },
+    {
+     "assertion": "给出正确替代：离线设备走 USB 串口烧录（idf.py flash），路由 esp32-idf",
+     "verdict": "pass",
+     "evidence": "SKILL.md L79（Hand-off：'USB 串口烧录 | esp32-idf'）、L80、L126（'离线走 USB 串口烧录（路由 esp32-idf）'）；具体命令由第二技能 esp32-idf 提供——esp32-idf/SKILL.md L79 'idf.py -p /dev/ttyUSB0 flash monitor'，其 frontmatter 亦列 idf.py flash workflow。两技能合流后断言完整满足。"
+    },
+    {
+     "assertion": "不编造任何'离线 OTA'机制或协议",
+     "verdict": "pass",
+     "evidence": "esp32-ota/SKILL.md 全文无任何离线 OTA 机制描述；L15/L80/L126 三处均以 refusal+路由收口，且 Offline Baseline（L31-32）声明'行为变化以官方 OTA 文档为准，不凭记忆断言'。技能设计中该前提被显式拒绝，无编造空间。"
+    },
+    {
+     "assertion": "如设备可临时带回有网环境，可按主路径走 OTA 并提醒升级决策检查单（电量/窗口/回滚预案）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L103-110 升级决策检查单：第 2 条'窗口与电量：电池设备电量高于阈值；业务空闲窗口；升级中不断电'、第 4 条'回滚预案：确认逻辑已实现并演练过；失败可回旧版'；references/rollback-checklist.md §1 第 3 行（电量/窗口）与第 6 行（回滚预案）。'带回有网环境'即回到 Workflow A 主路径的正常前提，检查单三要素均有原文支撑。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-secureboot-01",
+   "routed_to": "esp32-secureboot",
+   "expected_skills": [
+    "esp32-secureboot"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "明确拒绝（refusal）：签名私钥绝不进 git/CI 明文——私有仓库不改变泄露面（历史提交、token 泄露、协作者扩权都会带出密钥）",
+     "verdict": "pass",
+     "evidence": "esp32-secureboot/SKILL.md L13（Determine Task Type 2：'key 提交进 git 类请求直接 refusal'）、L67（Hand-off refusal 行）、L94（Pitfall 1：'方便 CI 不是理由'）；references/key-governance.md §1（生产签名私钥进 git/CI='绝不'）、§2.1（'把 secure boot key 提交到 git 方便 CI → 拒绝'）、§6（'从未进过 git 历史（含早期提交）'）。泄露面具体向量（token/协作者）为合理展开，核心 refusal 与'绝不'立场有逐字支撑。"
+    },
+    {
+     "assertion": "说明后果：私钥泄露后只能靠 eFuse 槽位撤销止损，而 KEY_REVOKEX 撤销不可逆，ESP32 单槽无退路",
+     "verdict": "pass",
+     "evidence": "SKILL.md L94（'泄露后只能靠不可逆的槽位撤销止损'）、L47（'KEY_REVOKEX 撤销，不可逆'+ESP32 摘要槽仅 1 个）；key-governance.md §4.4（'ESP32 单槽，撤销=换硬件'）、§5（'ESP32 单槽无撤销余地'）；sb2-facts.md §1（摘要槽 ESP32 仅 1 个/KEY_REVOKEX 不可逆）、§5（'ESP32 单槽无退路——换钥=换硬件'）。"
+    },
+    {
+     "assertion": "给出治理方案：构建与签名分离（CI 产出未签名制品，隔离签名服务/离线机签名），CI 只留公钥摘要做验证性检查，发布制品走 fw-release-gate 门禁",
+     "verdict": "pass",
+     "evidence": "key-governance.md §3.1（'构建与签名分离：CI 产出未签名制品；签名在隔离签名服务/离线机完成'）、§3.3（'CI 只需要公钥摘要的预期值做验证性检查——公钥/摘要不是秘密'）、§3.2（'走 fw-release-gate 的发布命名与校验门禁'）；SKILL.md L67（'拒绝并给治理方案（Workflow 第 4 步 + key-governance）'）、L69（Hand-off：发布命名/校验和/制品门禁→fw-release-gate）。"
+    },
+    {
+     "assertion": "提示若密钥已提交过：按已泄露处理（停止使用、评估撤销、复盘），而不是仅从当前版本删除",
+     "verdict": "pass",
+     "evidence": "SKILL.md L26（Preflight 4：'有没有进过 git？（进过 = 按已泄露处理，见 key-governance）'）、L90（Validation Gate 5：'git 历史/CI 日志无密钥（含历史提交）'）；key-governance.md §2.2（出现在 CI 明文变量/Docker 镜像/日志/issue 附件→视为已泄露）、§5 泄露响应（'立即停止用该钥签名 → 启动槽位撤销评估（注意不可逆）→ 受影响设备按预案换钥或召回评估 → 复盘入库'）——与断言三步一一对应。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-secureboot-02",
+   "routed_to": "esp32-secureboot",
+   "expected_skills": [
+    "esp32-secureboot"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "给出决策顺序：开发阶段 rehearsal（不烧生产 eFuse 走通签名/FE 开发模式/OTA 升级回滚全流程）→ 密钥治理落位（保管/备份/撤销预案）→ 生产小批量试产烧录 → 验证开机/OTA/回滚 → 放量",
+     "verdict": "pass",
+     "evidence": "SKILL.md Workflow L76-82 步序与断言一致：step 2 '开发阶段 rehearsal（必做）：在不烧生产 eFuse 的前提下走通全流程——密钥生成、签名、开发模式 FE（≤3 次明文烧录纪律）、OTA 签名镜像升级、失败回滚'→ step 3 '密钥治理落位（烧录前门禁）…撤销预案…写清'→ step 4 '先小批量试产验证开机、OTA、升级失败回滚，再放量'；sb2-facts.md §4.2-4.3 同序。"
+    },
+    {
+     "assertion": "强调 eFuse 一次性与不可逆：写保护/撤销不可逆，公钥摘要不可开读保护（软件校验需读取，误开读保护无法启动）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L8（每一步都碰 eFuse——一次性、不可逆）、L37（Contracts 1：'烧录/写保护/撤销不可逆'）、L38（Contracts 2：'须写保护，但不可读保护（软件校验需读取摘要；误开读保护会导致无法启动，基线高置信）'）、L96（Pitfall 3）；sb2-facts.md §1 '写保护/读保护'行原文一致。"
+    },
+    {
+     "assertion": "核对芯片事实：ESP32 rev 3.0+ 才支持 SBv2、RSA-3072 方案、ESP32 单摘要槽 vs C3 最多 3 槽",
+     "verdict": "pass",
+     "evidence": "SKILL.md L23（Preflight 1：'ESP32 经典款需 rev 3.0+ 才支持 SBv2（基线高置信）；C3 官方页描述 RSA-3072'）、L45-47（RSA-3072（RSA-PSS）；'摘要槽：ESP32 仅 1 个；C3 最多 3 个'）；sb2-facts.md §1（签名算法/摘要槽数两行）。"
+    },
+    {
+     "assertion": "若同时启用 Flash Encryption：提醒 Release 模式烧保护位后无法再明文烧录、新镜像只能经 OTA，需先确认 OTA 通道就绪（→ esp32-ota）；启用顺序先 SB 后 FE 并注明以官方 security 文档为准",
+     "verdict": "pass",
+     "evidence": "SKILL.md L24（Preflight 2：'没有 OTA 通道就启用 Release 加密 = 自断后路'）、L54（'Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA——启用前确认 OTA 通道可用（→ esp32-ota）'）、L60（'启用顺序：先 SB 后 FE（标注为官方推荐顺序；具体步骤以官方 security 文档为准，引用前运行时核验）'）、L78（Workflow step 1 'FE Release 前提 = OTA 通道就绪'）、L97（Pitfall 4）；sb2-facts.md §2 Release 行、§3。"
+    },
+    {
+     "assertion": "不写 ED25519 方案归属（UNVERIFIED），具体烧录命令标注运行时核验官方 security 文档",
+     "verdict": "pass",
+     "evidence": "SKILL.md L31（'ED25519 Secure Boot 方案归属：UNVERIFIED——本 Skill 与其下游一律不写'）、L98（Pitfall 5）、L25（Preflight 3：'具体烧录命令与工具链（espsecure 等）以官方 security 文档为准（运行时核验），本 Skill 不凭记忆给参数'）；sb2-facts.md §1（ED25519 行 'UNVERIFIED——禁止写入任何交付物'）、§4.4。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  },
+  {
+   "id": "esp32-secureboot-03",
+   "routed_to": "esp32-secureboot",
+   "expected_skills": [
+    "esp32-secureboot"
+   ],
+   "routing_match": true,
+   "verdict": "pass",
+   "assertion_results": [
+    {
+     "assertion": "纠正：Development 模式明文串口烧录最多 3 次（FLASH_CRYPT_CNT 计数），不是无限刷",
+     "verdict": "pass",
+     "evidence": "SKILL.md L53（'Development 模式：明文串口烧录 ≤ 3 次（FLASH_CRYPT_CNT 计数）——开发期用第 3 次之前就该意识到节奏'）、L99（Pitfall 6：'不要把 3 次明文烧录当无限额度'）；references/sb2-facts.md §2 Development 行（'≤3 次（FLASH_CRYPT_CNT 计数）'，置信度高）。"
+    },
+    {
+     "assertion": "对比 Release 模式：烧保护位后无法再明文烧录，新镜像只能经 OTA 进入设备",
+     "verdict": "pass",
+     "evidence": "SKILL.md L54（原文一致）、L24（Preflight 2）；sb2-facts.md §2 Release 行（'烧保护位后无法再明文烧录，新镜像只能经 OTA'）与'模式选择含义'行。"
+    },
+    {
+     "assertion": "给出纪律建议：开发期给明文烧录记账，留余量给必要验证；量产转 Release 前确认 OTA 通道（→ esp32-ota）",
+     "verdict": "pass",
+     "evidence": "SKILL.md L86（Validation Gate 1：'FE 开发模式烧录次数账本'）、L99（Pitfall 6：'留最后次数给真正需要的验证'）、L53（节奏提醒）、L54 与 L97（启用 Release 前确认 OTA 通道可用（→ esp32-ota））；sb2-facts.md §4.2（'FE 开发模式（记账 ≤3 次）'）。"
+    },
+    {
+     "assertion": "提醒 FE 密钥存 eFuse block1、烧录后写+读保护、软件不可读回",
+     "verdict": "pass",
+     "evidence": "SKILL.md L40（Contracts 4：'FE 密钥不可读回：密钥存 eFuse block1，烧录后写+读保护，软件不可读回'）、L52（Flash Encryption 要点同文）；sb2-facts.md §2 '密钥存储'行（置信度高）。"
+    }
+   ],
+   "issues": [],
+   "routing_match_member": true
+  }
+ ]
+}
