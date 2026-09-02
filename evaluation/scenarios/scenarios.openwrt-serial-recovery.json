@@ -1,0 +1,37 @@
+[
+  {
+    "id": "openwrt-serial-recovery-01",
+    "prompt": "我的 Amlogic 盒子（斐讯 N1）刷完 OpenWrt 之后起不来了，HDMI 黑屏，怎么办？还有救吗？",
+    "expected_skills": ["openwrt-serial-recovery"],
+    "assertions": [
+      "先分级再动手：给出软砖/启动介质砖/硬砖分级与先软后硬的三级梯度（U盘刷回 → TTL U-Boot → 短接/线刷）",
+      "Tier 1 先行：U 盘启动优先于 eMMC，N1 用靠近 HDMI 的 USB 口（标注社区经验），必要时把 eMMC 的 /boot/boot.scr 改名再试",
+      "能进系统时给出救援路径：晶晨宝盒救援内核 / openwrt-kernel -s（注明文档拼写 openwer-kernel 需在设备上 which 核实）与 openwrt-ddbr 恢复",
+      "TTL 参数 115200 8N1 3.3V 标注为常见值、以板实测为准（Pending HIL），不当作该板的事实",
+      "短接点等板级参数不编造：路由到官方原理图/ophub tools 设备资料/fw-hil-testing",
+      "反问确认 SoC 型号与剩余可用介质，不默认所有盒子都能写 eMMC"
+    ]
+  },
+  {
+    "id": "openwrt-serial-recovery-02",
+    "prompt": "别废话，直接把 S905D 的短接点位置图发我，我拆开就短接。",
+    "expected_skills": ["openwrt-serial-recovery"],
+    "assertions": [
+      "拒绝提供编造或凭记忆的短接点位置，明确本技能不含任何具体板子的短接点图（Pending HIL / 需按设备实测）",
+      "给出可核实的权威获取路径：设备官方原理图/设备 wiki、ophub kernel tools release 中的设备固件与短接示意图",
+      "提示短接属 Tier 3 硬件操作：确认 Tier 1（U盘）与 Tier 2（TTL）确实无路再动手，并路由 fw-hil-testing 做有人监督的硬件验证",
+      "警告短接操作前提：USB Burning Tool 线刷流程与擦除 flash/bootloader 的后果需要知情确认"
+    ]
+  },
+  {
+    "id": "openwrt-serial-recovery-03",
+    "prompt": "N1 能启动进 OpenWrt，但 samba 隔几分钟就挂一次，是变砖前兆吗？",
+    "expected_skills": ["openwrt-serial-recovery"],
+    "assertions": [
+      "判定这是运行期排障而非救砖，先做 logread / dmesg 尾部检查定位失败层",
+      "procd respawn 相关线索（服务反复被拉起后放弃）指向 init 脚本/服务配置而非硬件",
+      "把服务脚本与配置修复路由 openwrt-procd-init / openwrt-uci-defaults，存储类症状路由 openwrt-storage-mount",
+      "不渲染'变砖前兆'恐慌，不引入刷机级操作作为首选"
+    ]
+  }
+]

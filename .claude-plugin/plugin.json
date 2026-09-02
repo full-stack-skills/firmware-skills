@@ -1,0 +1,29 @@
+{
+  "name": "firmware-skills",
+  "version": "0.1.0",
+  "description": "Verifiable, on-demand embedded firmware agent skills for OpenWrt gateway firmware and ESP32 MCU firmware, with cross-cutting toolchain/emulation/HIL and release gates.",
+  "author": "tiny-nas / hiwepy",
+  "license": "Apache-2.0",
+  "skills": [
+    "fw-core",
+    "openwrt-image-build",
+    "openwrt-amlogic-remake",
+    "openwrt-procd-init",
+    "openwrt-uci-defaults",
+    "openwrt-storage-mount",
+    "openwrt-serial-recovery",
+    "esp32-idf",
+    "esp32-freertos",
+    "esp32-peripherals",
+    "esp32-wifi-provision",
+    "esp32-ota",
+    "esp32-lowpower",
+    "esp32-secureboot",
+    "esp32-debug",
+    "esp32-variants",
+    "fw-toolchain",
+    "fw-emulation",
+    "fw-hil-testing",
+    "fw-release-gate"
+  ]
+}

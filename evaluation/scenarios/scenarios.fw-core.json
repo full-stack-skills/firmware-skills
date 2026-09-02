@@ -1,0 +1,43 @@
+[
+  {
+    "id": "fw-core-01",
+    "prompt": "我想用 Rust 写一个 no_std 的传感器驱动，跑在 Cortex-M 上，用 Embassy，你们这个固件技能包能帮我吗？",
+    "expected_skills": ["fw-core", "rust-embedded"],
+    "assertions": [
+      "明确声明 firmware-skills 包不覆盖 Rust no_std 固件（refusal），不得用 ESP-IDF/C 知识硬答",
+      "显式移交到 rust-skills/rust-embedded，并说明该 Skill 覆盖 target/runtime、embedded-hal、Embassy/RTIC、烧写与硬件验收",
+      "不编造 Cortex-M 具体型号的内存布局或链接脚本"
+    ]
+  },
+  {
+    "id": "fw-core-02",
+    "prompt": "给 N1 刷机，我要一个能当 NAS 用的固件写到盒子的 eMMC 里。",
+    "expected_skills": ["fw-core", "openwrt-amlogic-remake"],
+    "assertions": [
+      "识别 N1（Phicomm N1，Amlogic S905D 盒子）属于 Amlogic 盒子写 eMMC 场景，主路由 openwrt-amlogic-remake",
+      "若需预装自定义服务/文件，说明 rootfs 侧先走 openwrt-image-build 产 rootfs.tar.gz，再交 remake 链，而不是只给 IB 直出镜像",
+      "在执行写 eMMC 前确认目标盘符并提示破坏性操作",
+      "引用'构建成功≠硬件可用'，无硬件证据时标注 Build Verification Only"
+    ]
+  },
+  {
+    "id": "fw-core-03",
+    "prompt": "ESP32-S3 项目，电池供电，要一年续航，另外量产前想加固件签名校验。这两个需求该用哪些技能，按什么顺序做？",
+    "expected_skills": ["fw-core", "esp32-lowpower", "esp32-secureboot", "esp32-variants", "fw-hil-testing"],
+    "assertions": [
+      "续航需求路由 esp32-lowpower，并建议先用 esp32-variants 评估低功耗芯片型号",
+      "签名校验路由 esp32-secureboot（Secure Boot V2）",
+      "给出顺序：选型 → 低功耗设计 → 安全启动 → fw-hil-testing 实测验证",
+      "路由前先问 ESP-IDF 版本与模组型号（Contracts）"
+    ]
+  },
+  {
+    "id": "fw-core-04",
+    "prompt": "我手头还没收到板子，但想先把 ESP32 的业务逻辑跑通验证一下，有什么办法？",
+    "expected_skills": ["fw-core", "fw-emulation"],
+    "assertions": [
+      "识别'无板先跑'为模拟验证场景，路由 fw-emulation",
+      "说明模拟验证结果不等于硬件可用，后续仍需 fw-hil-testing 上板验收"
+    ]
+  }
+]

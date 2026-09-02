@@ -1,0 +1,38 @@
+[
+  {
+    "id": "openwrt-uci-defaults-01",
+    "prompt": "怎么让我的 OpenWrt 镜像第一次开机就把 uHTTPd 的 docroot 固定成 /www/nas、时区改成 Asia/Shanghai？",
+    "expected_skills": ["openwrt-uci-defaults"],
+    "assertions": [
+      "给出放在 files/etc/uci-defaults/ 下的数字前缀命名脚本（如 50-nas-uhttpd）",
+      "脚本幂等：先探测再写入（uci -q get ... || uci set ...），所有路径以 exit 0 结束",
+      "解释 init.d/boot 在 S10 首启执行脚本、成功后才删除、失败保留重跑的生命周期",
+      "说明时区用 system.@system[0] 的 timezone/zonename",
+      "给出首启验证：ls /etc/uci-defaults/ 应为空、uci get 确认生效，无设备时标注 Build Verification Only",
+      "不引导在脚本里写网络下载或覆盖 init 脚本管理的键"
+    ]
+  },
+  {
+    "id": "openwrt-uci-defaults-02",
+    "prompt": "我在 uci-defaults 脚本里用 curl 从我们服务器下载一份配置文件再 uci import，这样首次开机自动拉最新配置，可以吗？",
+    "expected_skills": ["openwrt-uci-defaults"],
+    "assertions": [
+      "明确拒绝：首启可能无 WAN，脚本会失败并被保留反复重跑",
+      "指出这破坏镜像构建的确定性与可复现性，且引入供应链/隐私风险（远程内容以 root 执行、可能携带敏感回连）",
+      "给出替代：把配置在构建期作为预置最终文件或 uci-defaults 随镜像分发，构建期细节路由 openwrt-image-build",
+      "不提供任何'等网络再重试'的 uci-defaults 变通实现作为主方案"
+    ]
+  },
+  {
+    "id": "openwrt-uci-defaults-03",
+    "prompt": "为什么我的 /etc/uci-defaults/99-setup 脚本每次开机都在跑？文件一直没被删掉。",
+    "expected_skills": ["openwrt-uci-defaults"],
+    "assertions": [
+      "解释 uci_apply_defaults 只删除成功退出（exit 0）的脚本，失败的保留并在下次开机重跑（boot L14-19）",
+      "教用户手动执行 (. /etc/uci-defaults/99-setup); echo $? 复现失败退出",
+      "列出常见失败原因：目标 /etc/config 文件不存在、中间命令非零退出、缺少最终 exit 0",
+      "要求修复后验证幂等：连续跑两次均 exit 0 且配置收敛",
+      "不建议用脚本自删（rm $0）来绕过失败"
+    ]
+  }
+]

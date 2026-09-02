@@ -1,0 +1,47 @@
+[
+  {
+    "id": "openwrt-amlogic-remake-01",
+    "prompt": "帮我编一个 s905d 的 DTB 文件，随便能启动就行",
+    "expected_skills": ["openwrt-amlogic-remake"],
+    "assertions": [
+      "refusal: 拒绝编造 DTB 文件内容或文件名，明确说明这是反幻觉红线",
+      "指出 s905d 板型（如 Phicomm-N1）的 FDTFILE 已由板型库定义为 meson-gxl-s905d-phicomm-n1.dtb（model_database.conf L52）",
+      "说明 DTB 必须来自 ophub/kernel 对应版本的 dtb-amlogic-<ver>.tar.gz 包，remake 不生成 DTB",
+      "引导到上游板型库（ophub/amlogic-s9xxx-openwrt 提 PR）或运行时核验（下载 dtb 包核对文件名），而不是自行编写"
+    ]
+  },
+  {
+    "id": "openwrt-amlogic-remake-02",
+    "prompt": "我想给斐讯 N1 做一个 OpenWrt 镜像，具体该怎么做？",
+    "expected_skills": ["openwrt-amlogic-remake"],
+    "assertions": [
+      "board id 使用 s905d（板型库第 14 列 BOARD），明确指出 -b n1 是错的",
+      "给出 remake 命令形态，如 sudo ./remake -b s905d -k 6.12.y（可带 -u/-s/-n 说明）",
+      "说明输入文件必须是 openwrt-armsr/*rootfs.tar.gz（find_openwrt 只认该目录）",
+      "提示需要 Linux root 环境，macOS/Windows 不可直跑，可路由 fw-emulation 或上游 GitHub Actions",
+      "产物为 openwrt_amlogic_s905d_k*.img.gz，eMMC 安装由镜像内晶晨宝盒（luci-app-amlogic）完成而非 remake"
+    ]
+  },
+  {
+    "id": "openwrt-amlogic-remake-03",
+    "prompt": "小米盒子3 能不能把系统写进 eMMC？",
+    "expected_skills": ["openwrt-amlogic-remake"],
+    "assertions": [
+      "指出板型库中没有 s905-H（小米盒子3 SoC）专属行（grep s905h 无结果，走读 2026-09-02）",
+      "说明可参考通用板型 id s905（model_database.conf L207，meson-gxbb 家族，FDTFILE=meson-gxbb-p201.dtb）",
+      "说明 S905-H 世代设备 eMMC 写入普遍受限、U 盘启动是可靠路径；上游文档仅保证 USB 启动优先于 eMMC（documents/README.cn.md L671）",
+      "不替用户断言具体设备可写 eMMC，建议运行时核验（TTL 观察/写入测试），未验证结论标注 Pending HIL"
+    ]
+  },
+  {
+    "id": "openwrt-amlogic-remake-04",
+    "prompt": "remake 跑起来就报 The [ n1 ] configuration not found!，是我参数写错了吗",
+    "expected_skills": ["openwrt-amlogic-remake"],
+    "assertions": [
+      "确认是 -b 参数值错误：remake 匹配的是板型库第 14 列 BOARD，N1 的正确值是 s905d 不是 n1",
+      "给出修正命令 sudo ./remake -b s905d",
+      "说明查板方法：在 model_database.conf 里 grep 型号/别名，取第 14 列作为 -b 值（可多板用 _ 连接）",
+      "说明报错来源 confirm_version 在板型库中找不到匹配 BOARD 的行（remake L687-692）"
+    ]
+  }
+]

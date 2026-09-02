@@ -1,0 +1,38 @@
+[
+  {
+    "id": "openwrt-procd-init-01",
+    "prompt": "我想让 OpenWrt 开机自动运行我自己的守护进程 /usr/bin/myagent --config /etc/myagent.toml，init 脚本怎么写？写完怎么确认它真的在跑？",
+    "expected_skills": ["openwrt-procd-init"],
+    "assertions": [
+      "给出的脚本以 #!/bin/sh /etc/rc.common 开头并声明 USE_PROCD=1 与 START/STOP",
+      "在 start_service() 里用 procd_open_instance/procd_close_instance 包裹实例",
+      "命令参数逐个传递：procd_set_param command /usr/bin/myagent 后用 procd_append_param command --config /etc/myagent.toml，而不是把整条命令行塞进一个带引号的参数",
+      "说明 /etc/init.d/myagent enable 需要脚本里有 START，否则 enable 失败",
+      "给出设备端验证命令（status、logread | grep procd），并在无设备时标注 Build Verification Only",
+      "不引导用户手写 /etc/rc.d/ 符号链接"
+    ]
+  },
+  {
+    "id": "openwrt-procd-init-02",
+    "prompt": "我把启动脚本直接放到 Image Builder 覆盖层的 files/etc/rc.d/S99myagent，这样开机就会跑了吧？",
+    "expected_skills": ["openwrt-procd-init", "openwrt-image-build"],
+    "assertions": [
+      "明确拒绝手放 /etc/rc.d/ 链接进覆盖层的做法",
+      "解释 Image Builder 在构建期 prepare_rootfs 会自动 enable 带 rc.common shebang 的 init 脚本，因此应把脚本放 files/etc/init.d/ 并写好 shebang 与 START",
+      "提示需要禁用自启时用 DISABLED_SERVICES 而不是删链接",
+      "把 Image Builder 细节 hand-off 给 openwrt-image-build 技能"
+    ]
+  },
+  {
+    "id": "openwrt-procd-init-03",
+    "prompt": "我的 init 脚本开机没有生效，但手动执行 /etc/init.d/tinynas-boot start 是可以跑的，怎么回事？",
+    "expected_skills": ["openwrt-procd-init"],
+    "assertions": [
+      "按顺序排查：先查第一行是否为 #!/bin/sh /etc/rc.common，再查是否定义了 START",
+      "指出 enable() 在无 START/STOP 时返回失败、不生成 /etc/rc.d 链接（rc.common L44-54 语义）",
+      "用 ls -l /etc/rc.d/ 与 /etc/init.d/<name> enabled 验证链接是否存在",
+      "区分'没 enable/顺序不对'与'启动后崩溃'两条路径，后者查 logread 与 respawn 行为",
+      "不引导用户手写 /etc/rc.d/ 链接来修问题"
+    ]
+  }
+]

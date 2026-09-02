@@ -1,0 +1,46 @@
+[
+  {
+    "id": "openwrt-image-build-01",
+    "prompt": "帮我把这几个自定义脚本和网页塞进 OpenWrt 固件镜像里，另外 FILES= 会删掉 rootfs 里已有的文件吗？我担心把系统文件弄丢。",
+    "expected_skills": ["openwrt-image-build"],
+    "assertions": [
+      "正确回答：FILES= 是覆盖式合并而非整包替换——同路径文件被覆盖、覆盖层未涉及的既有文件原样保留，不会删除 rootfs 里已有文件（依据 rootfs.mk prepare_rootfs 的 file_copy 语义）",
+      "说明合并前会先清除覆盖路径上的同名符号链接（rules.mk file_copy）",
+      "指出 FILES= 也无法用来删除文件；要移除内容用 PACKAGES= 的 -包名 语法",
+      "给出可复制的覆盖层目录结构与 make image FILES= 命令",
+      "提醒 init.d 脚本不要手放 /etc/rc.d/，IB 会按 rc.common shebang 自动 enable"
+    ]
+  },
+  {
+    "id": "openwrt-image-build-02",
+    "prompt": "我要给 N1 盒子做个固件写进 eMMC，你这个 Image Builder 直接能出盒子能刷的镜像吗？",
+    "expected_skills": ["openwrt-image-build", "openwrt-amlogic-remake"],
+    "assertions": [
+      "说明官方 IB 直出不产 Amlogic 盒子 eMMC 镜像，N1 场景需走 ophub 重打包链",
+      "给出正确链路：本 Skill 产 armsr rootfs.tar.gz（PACKAGES/FILES 定制保留），再移交 openwrt-amlogic-remake 重打包",
+      "纠正'IB 输入是 rootfs.tar.gz'的误解：官方 IB 输入是 repositories.conf 提供的 ipk，rootfs.tar.gz 是开启 CONFIG_TARGET_ROOTFS_TARGZ 的产物",
+      "构建产物在真机验证前标注 Build Verification Only"
+    ]
+  },
+  {
+    "id": "openwrt-image-build-03",
+    "prompt": "用官方 Image Builder 编 x86 软路由镜像，去掉默认的 pppoe 拨号相关包，加上 docker 和 samba4，构建完怎么确认东西都进去了？",
+    "expected_skills": ["openwrt-image-build"],
+    "assertions": [
+      "给出三层包列表组织方式与 PACKAGES='-ppp-mod-pppoe docker-... samba4...' 的追加/移除混合语法",
+      "构建前用 make info 实证 PROFILE、用 make manifest 预演清单",
+      "构建后核对 manifest/sha256sum 校验，验证产物存在且校验和通过",
+      "说明构建成功不等于硬件可用，真机验收移交 fw-hil-testing"
+    ]
+  },
+  {
+    "id": "openwrt-image-build-04",
+    "prompt": "IB 构建时报错 postinst script xxx has failed with exit code 1，然后镜像没出来，怎么回事？",
+    "expected_skills": ["openwrt-image-build"],
+    "assertions": [
+      "解释根因：prepare_rootfs 会重放所有包的 postinst 脚本，任一非零退出即中止构建（rootfs.mk）",
+      "排查方向：覆盖层是否覆盖破坏了该 postinst 依赖的文件（如同名 UCI 配置语法错误）",
+      "建议用最小覆盖层二分定位，而不是删除报错日志绕过"
+    ]
+  }
+]

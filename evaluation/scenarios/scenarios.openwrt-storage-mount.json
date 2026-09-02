@@ -1,0 +1,37 @@
+[
+  {
+    "id": "openwrt-storage-mount-01",
+    "prompt": "OpenWrt 上插 U 盘自动挂载怎么配？插上完全没反应。",
+    "expected_skills": ["openwrt-storage-mount"],
+    "assertions": [
+      "给出包矩阵：block-mount + kmod-usb-storage + 按盘格式选 kmod-fs-ext4/vfat/ntfs3 等，并强调 kmod 版本必须等于 uname -r",
+      "给出 fstab 生成与启用步骤：block detect > /etc/config/fstab，uci 置 target 与 enabled=1",
+      "给出验证链：block mount && df -h，重启后再验一次（S11 fstab init 的 block mount）",
+      "说明默认 router 型镜像不带 block-mount（DEFAULT_PACKAGES.nas 才含），首启 uci-defaults 10-fstab 只在 fstab 不存在时生成草稿"
+    ]
+  },
+  {
+    "id": "openwrt-storage-mount-02",
+    "prompt": "我想自己写一个 /etc/hotplug.d/block/ 脚本，U 盘一插进去就自动 mount 到 /mnt/usb，帮我看下怎么写。",
+    "expected_skills": ["openwrt-storage-mount"],
+    "assertions": [
+      "handoff/correction: 纠正\"hotplug 里直接 mount\"的做法，说明 block-mount 的 10-mount 已拥有挂载权（add/remove → /sbin/block hotplug），自写挂载会与之竞争（双挂载/umount 互踩）",
+      "给出正确模式：脚本序号 >10（如 50-），只做补充动作（打点/扫描/通知），绝不 mount",
+      "挂载需求引导回 fstab UCI（block detect + enabled=1）作为挂载的唯一事实源",
+      "引用或复现 50-tinynas-disk 的真实模式：先过滤 ACTION=add 与 DEVNAME，动作后台化，工具存在才调用",
+      "构建期固化该脚本进镜像的建议 hand-off 到 openwrt-image-build"
+    ]
+  },
+  {
+    "id": "openwrt-storage-mount-03",
+    "prompt": "lsusb 能看到 U 盘但 /mnt 下什么都没有，dmesg 里有 unknown filesystem，这是哪里的问题？",
+    "expected_skills": ["openwrt-storage-mount"],
+    "assertions": [
+      "定位为缺文件系统 kmod：unknown filesystem 说明存储链路已通（usb-storage 已加载），缺的是对应 fs 模块",
+      "按盘格式给包：FAT32→kmod-fs-vfat、exFAT→kmod-fs-exfat、NTFS→kmod-fs-ntfs3、ext4→kmod-fs-ext4",
+      "提醒 kmod 版本必须与 uname -r 精确匹配，跨版本 insmod 拒绝加载",
+      "给出一句话能力边界：NTFS/exFAT 能挂能写，但坏块隔离/自愈是 ext4 原生能力，长期数据盘优先 ext4",
+      "排查顺序遵循 kmod（盘可见）→ fstab（enabled）→ block mount → 重启验证"
+    ]
+  }
+]
