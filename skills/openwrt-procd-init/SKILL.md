@@ -1,5 +1,6 @@
 ---
 name: openwrt-procd-init
+license: Apache-2.0
 description: Write, register, and debug OpenWrt init scripts in /etc/init.d using rc.common and the procd service manager. Cover the #!/bin/sh /etc/rc.common shebang contract, START/STOP boot-order wiring, enable/disable autostart semantics, USE_PROCD=1 services with procd_open_instance and procd_set_param (command array, respawn, env, file, limits), service_triggers with PROCD_RELOAD_DELAY, and S00-S99 startup-order placement relative to boot(S10), uhttpd(S50), and done/rc.local(S95). Use when the user asks how to 写开机自启脚本 / 写 init.d 服务 / 让服务开机自动运行, when a procd instance keeps respawning, when /etc/init.d/<name> start works manually but not at boot, or when choosing a START number for a custom service. Route first-boot UCI configuration in /etc/uci-defaults to openwrt-uci-defaults, and Image Builder overlay packaging, auto-enable internals, or DISABLED_SERVICES to openwrt-image-build.
 ---
 

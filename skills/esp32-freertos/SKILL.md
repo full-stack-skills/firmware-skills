@@ -1,5 +1,6 @@
 ---
 name: esp32-freertos
+license: Apache-2.0
 description: Design, review, and troubleshoot concurrent code on the ESP-IDF FreeRTOS variant (IDF FreeRTOS, a modified Vanilla FreeRTOS v10.5.1 kernel as of 2026-09-02) — task creation, queue/semaphore/mutex/software-timer patterns, stack sizing in BYTES (not words like upstream FreeRTOS), priorities (default CONFIG_FREERTOS_MAX_PRIORITIES=25, configurable — verify against sdkconfig), xTaskCreatePinnedToCore and SMP dual-core pinning on ESP32/S3/P4/H4 (PRO_CPU/APP_CPU), portMUX critical sections, and stack-overflow/watchdog triage. Use when users mention xTaskCreate/xTaskCreatePinnedToCore, 任务/队列/信号量/互斥/软件定时器, 栈溢出, 任务优先级, 双核/绑核, PRO_CPU/APP_CPU, portMUX, or FreeRTOS concurrency inside an ESP-IDF project. Route pin-level peripheral drivers to esp32-peripherals, crash/coredump analysis to esp32-debug, project and sdkconfig issues to esp32-idf, and sleep/low-power design to esp32-lowpower.
 ---
 

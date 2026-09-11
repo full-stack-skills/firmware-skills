@@ -1,5 +1,6 @@
 ---
 name: openwrt-uci-defaults
+license: Apache-2.0
 description: Author idempotent first-boot configuration for OpenWrt images via /etc/uci-defaults scripts, and choose between uci-defaults deltas and preseeded final /etc/config files. Cover the init.d/boot lifecycle (executed at S10 on first boot, deleted on success, kept and re-run on failure), numeric-prefix ordering, uHTTPd key UCI options (docroot /www, cgi_prefix, rfc1918_filter, max_requests, script_timeout, lua/ucode prefix precedence over CGI), and firewall lan-zone defaults that make ports 80/22 reachable with zero extra config. Use when the user asks how to 首次开机改默认配置 / set factory defaults / preseed UCI config in an image, when a uci-defaults script runs on every boot or is never deleted, or when uHTTPd does not serve or reach the web root as expected. Route init.d/procd service scripts to openwrt-procd-init, and Image Builder overlay layout, FILES= handling, and image reproducibility to openwrt-image-build.
 ---
 

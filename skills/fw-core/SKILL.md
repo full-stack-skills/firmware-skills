@@ -1,5 +1,6 @@
 ---
 name: fw-core
+license: Apache-2.0
 description: Route any embedded-firmware task to the right specialized skill in this pack — OpenWrt Linux gateway firmware (image build, Amlogic box remake, procd init, uci-defaults, storage mount, serial recovery) and ESP32 MCU firmware (ESP-IDF, FreeRTOS, peripherals, Wi-Fi provisioning, OTA, low power, secure boot, debugging, variant selection), plus cross-cutting toolchain, emulation, HIL testing, and release gating. Use when the user mentions 刷机, OpenWrt 镜像/FILES, N1/Amlogic 盒子写 eMMC, 开机自启, 首启配置/UCI, 硬盘挂载, 变砖救援, ESP-IDF 工程/分区表, FreeRTOS 任务, 引脚外设, 配网, OTA 升级, 低功耗, 安全启动, coredump/JTAG, 芯片选型, 交叉工具链, 无板模拟, 硬件验收, or 固件发布命名/校验和. Do NOT use for Rust no_std firmware — hand off to rust-skills/rust-embedded instead.
 ---
 

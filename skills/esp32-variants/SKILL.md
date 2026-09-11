@@ -1,5 +1,6 @@
 ---
 name: esp32-variants
+license: Apache-2.0
 description: Select the right ESP32-family chip for a project — compare architecture (Xtensa LX6/LX7 vs RISC-V), core count, and Wi-Fi / BLE / 802.15.4 radio capabilities across ESP32, S2, S3, C3, C6, H2, P4; apply a decision tree (low-cost unicore → C3, AI vector instructions → S3, Thread/Zigbee → C6/H2, dual-core high performance → S3/P4); and verify minimum supported ESP-IDF versions at runtime instead of fabricating them. Use when users are choosing a chip/module (选型), comparing ESP32 variants, asking which ESP32 to use for Thread, Zigbee, Wi-Fi 6, BLE-only, or AI workloads, or evaluating a migration to another chip in the family. Do NOT state per-chip minimum ESP-IDF versions (UNVERIFIED — give the official verification method instead). Hand off project scaffolding to esp32-idf, low-power design to esp32-lowpower, and secure boot, provisioning, or peripherals to their dedicated esp32-* skills.
 ---
 

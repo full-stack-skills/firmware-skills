@@ -1,5 +1,6 @@
 ---
 name: esp32-wifi-provision
+license: Apache-2.0
 description: Choose and implement ESP32 Wi-Fi provisioning with ESP-IDF — method selection across the four official approaches (Unified Provisioning over SoftAP/BLE transports with Security 0/1/2, legacy SmartConfig, Wi-Fi Easy Connect/DPP, raw protocomm), the provisioning state machine (未配网 → 配网中 → 已配网 → 凭据失效重配), NVS-backed credential persistence, and production security red lines (不把 SSID/密码写死固件、Production 禁 Security 0). Use when the user says 配网/联网配置/烧 Wi-Fi 凭据, asks SmartConfig 还是 BLE 配网 / Unified Provisioning 怎么接, integrates the network_provisioning component, or reports 配网失败/连不上路由器/重配网. Do NOT use for firmware update delivery (route esp32-ota), chip selection when the target lacks Wi-Fi/BLE (route esp32-variants), or Thread/Zigbee connectivity.
 ---
 

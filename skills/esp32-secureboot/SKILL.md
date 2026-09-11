@@ -1,5 +1,6 @@
 ---
 name: esp32-secureboot
+license: Apache-2.0
 description: Plan and rehearse ESP32 Secure Boot v2 and Flash Encryption for production ESP32 firmware — SBv2 facts (RSA-3072 public-key digest burned into eFuse, write-protected but not read-protected, private key never on device), one-shot eFuse nature requiring a development-stage rehearsal before production burning, Flash Encryption (AES-256, ≤3 plaintext development flashes, irreversible Release mode), the signed-app + encrypted-flash combination with OTA, and key governance (生产密钥绝不进仓库/CI 明文). Use when the user says 安全启动/Secure Boot/固件签名/Flash 加密/量产安全, asks 量产前安全怎么启用, or mentions secure boot keys, eFuse 烧录, or signing keys in CI. Refuses to put signing keys into git/CI and does not assert ED25519 or per-chip minimum IDF versions (UNVERIFIED). For OTA rollback enablement route esp32-ota; for release naming/checksum gating route fw-release-gate.
 ---
 

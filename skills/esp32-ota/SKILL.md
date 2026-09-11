@@ -1,5 +1,6 @@
 ---
 name: esp32-ota
+license: Apache-2.0
 description: Design and troubleshoot ESP-IDF OTA firmware update for ESP32 — dual OTA app slots (ota_0/ota_1) + otadata partition prerequisites with a minimal partitions CSV template, the esp_ota_begin/write/end flow, the NEW→PENDING_VERIFY→VALID/INVALID/ABORTED image state machine, CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE semantics (new image must call esp_ota_mark_app_valid_cancel_rollback() or it rolls back on reboot), esp_https_ota with mandatory server certificate verification, and the pre-upgrade decision checklist (version compare, battery/idle window, rollback rehearsal). Use when the user says OTA 升级/远程升级/固件热更新, asks 加双分区可回滚, reports 升级后设备又跑回旧版本/升级失败, or wants an update channel for deployed devices. Do NOT use for offline/USB serial flashing (route esp32-idf), eFuse anti-rollback and signing setup (route esp32-secureboot), or crash triage of a failed image (route esp32-debug).
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: fw-release-gate
+license: Apache-2.0
 description: Operate the firmware release gate — naming and versioning with SemVer plus channel/watermark fields (five-segment image-name pattern 提炼自 TinyNAS 实践 openwrt_<brand>-<tier>-<device>_v<SemVer>-<channel>_<date>.img.gz), artifact integrity (mandatory sha256 sidecar re-verified at the gate, SOURCE_DATE_EPOCH reproducible-build declaration, LICENSE/GPL compliance for OpenWrt GPLv2 and bundled AGPL components), signing and key governance (asymmetric pattern 固件只嵌公钥/私钥仅签名机/渠道子密钥分发, with the symmetric short-code boundary stated as risk), and a scriptable pre-release checklist (artifacts+checksums, name lint, zero external links, secret scan, rollback plan, HIL badge requirement, release notes with known issues). Use when the user asks 镜像发布前检查什么 / 固件怎么命名 / 版本号怎么定 / 校验和 / 渠道固件 / 发布流程, proposes 把签名私钥放进 CI 环境变量 (refuse with a governance plan), or asks 多渠道能否共用一把签名密钥. HIL evidence gaps route back to fw-hil-testing; ESP32 secure-boot/eFuse mechanics route to esp32-secureboot.
 ---
 

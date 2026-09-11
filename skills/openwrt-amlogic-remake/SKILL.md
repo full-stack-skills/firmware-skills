@@ -1,5 +1,6 @@
 ---
 name: openwrt-amlogic-remake
+license: Apache-2.0
 description: Rebuild an OpenWrt armsr/armv8 rootfs.tar.gz into bootable images for Amlogic/Rockchip/Allwinner TV boxes and SBCs using the ophub amlogic-s9xxx-openwrt `remake` pipeline (dual-partition layout, vendor u-boot dd, ophub kernel three-archive replacement, rootfs refactoring, luci-app-amlogic injection). Use when users ask to build images for boxes such as Phicomm N1, pick a board id or an ophub kernel line, pass remake parameters (-b/-k/-u/-a/-p/-s/-n), troubleshoot a failed remake run, or ask how eMMC installation works on Amlogic boxes. Do not build the armsr rootfs itself (hand off to openwrt-image-build), do not hand-run this Linux-root pipeline on macOS (hand off to fw-emulation), and do not fabricate DTB filenames or board rows.
 ---
 

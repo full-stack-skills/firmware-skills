@@ -1,5 +1,6 @@
 ---
 name: esp32-debug
+license: Apache-2.0
 description: Debug crashes and resets on ESP32 with ESP-IDF — a debug-means matrix (JTAG/OpenOCD with ESP-Prog — classic ESP32 has no built-in USB-Serial/JTAG and does NOT support SWD; coredump to flash or UART analyzed via idf.py coredump-info/coredump-debug; runtime GDB stub; idf.py monitor as the baseline channel), the crash handling flow (panic 回溯解读 → coredump 提取 → 符号化调试), and a reset-reason triage table distinguishing 看门狗复位 vs panic vs 掉电/供电问题 with a decision tree for 随机重启. Use when the user says 设备随机重启/莫名复位/死机/Guru 级崩溃, asks 怎么看 panic 回溯/提取 coredump, wants JTAG or OpenOCD setup, or needs to decide JTAG vs coredump vs 串口. Refuses hardware-supply-level conclusions and routes them to fw-hil-testing; refuses to invent wiring pins, JTAG frequencies, or unsupported debug interfaces. For firmware-side fixes shipped via OTA route esp32-ota.
 ---
 

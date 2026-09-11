@@ -1,5 +1,6 @@
 ---
 name: openwrt-image-build
+license: Apache-2.0
 description: Build customized OpenWrt images with the official Image Builder — download and cache the IB, layer PACKAGES (common/tier/arch), inject a FILES= rootfs overlay with correct semantics, run make image with PROFILE validation, and collect sha256-verified artifacts. Use when users ask to 构建/定制 OpenWrt 镜像, add or pin packages via PACKAGES=, inject custom files/services/web UI via FILES=, use DISABLED_SERVICES or ROOTFS_PARTSIZE, or produce a rootfs.tar.gz for a downstream repack; hand off Amlogic/N1 盒子 eMMC image repacking to openwrt-amlogic-remake, and runtime-only config questions (init scripts, first-boot UCI, mounts) to their dedicated skills.
 ---
 

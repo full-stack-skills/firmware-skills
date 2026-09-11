@@ -1,5 +1,6 @@
 ---
 name: esp32-lowpower
+license: Apache-2.0
 description: Design and troubleshoot ESP32 low-power sleep strategies on ESP-IDF — light-sleep vs deep-sleep selection, the six deep-sleep wakeup sources documented in the dated baseline (RTC timer with µs precision, touch, EXT0 single RTC GPIO, EXT1 multi RTC GPIO with ANY_LOW on S2/S3/C6/H2, ULP coprocessor, deep-sleep wake GPIO), ULP distribution across the family (ESP32=ULP-FSM, S2/S3=RISC-V ULP or FSM, C6/P4=LP core), RTC-memory retention vs NVS snapshot trade-off, and a power-meter current acceptance method. Use when users mention 低功耗, deep sleep/深睡, light sleep, 电池续航/月级续航, 唤醒源, ULP, or ask to quote deep-sleep current in µA. Refuses to write specific deep-sleep µA numbers from memory — those are UNVERIFIED in the baseline and must be measured with a power meter on real hardware (route fw-hil-testing). Do NOT use for FreeRTOS task/tick design (route esp32-freertos), chip selection (route esp32-variants), or project scaffolding/partitions (route esp32-idf).
 ---
 

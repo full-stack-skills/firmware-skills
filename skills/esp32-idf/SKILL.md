@@ -1,5 +1,6 @@
 ---
 name: esp32-idf
+license: Apache-2.0
 description: Scaffold, port, configure, build, and flash ESP-IDF projects for the ESP32 family — idf.py workflow (create-project/set-target/menuconfig/build/flash/monitor), sdkconfig decisions, partition tables (factory + dual OTA slots), component-manager dependency locking (idf_component.yml / managed_components / dependencies.lock), v5→v6 migration of removed legacy drivers and esp-mqtt, and build/flash troubleshooting. Use when users mention ESP-IDF, idf.py, sdkconfig/menuconfig, partitions.csv/分区表, CMakeLists.txt, managed_components/依赖锁定, 烧写/monitor, or v5 工程升级 v6 编译报错. Route task/concurrency design to esp32-freertos, pin-level drivers to esp32-peripherals, chip selection to esp32-variants, and OTA, secure boot, Wi-Fi provisioning, low power, and crash debugging to their dedicated esp32-* skills.
 ---
 

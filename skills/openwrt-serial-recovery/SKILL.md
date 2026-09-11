@@ -1,5 +1,6 @@
 ---
 name: openwrt-serial-recovery
+license: Apache-2.0
 description: Triage and recover Amlogic-based TV-box devices (e.g. Phicomm N1 / S905D) running OpenWrt through a three-tier recovery ladder - USB/SD re-flash while the system or U-Boot still works, TTL UART into the U-Boot command line, and hardware-level short-circuit/programmer recovery (declared out of scope with routing instead). Cover brick grading, software-first ordering, ophub rescue tooling (openwrt-ddbr, kernel rescue via Amlogic Service, USB Burning Tool prerequisites), USB-over-eMMC boot priority, and runtime log triage with logread/dmesg for devices that still boot. Use when the user says 盒子刷砖了 / 起不来了 / 无法启动 / 想救回设备, asks whether TTL 串口 can still reach the box, or needs to decide between re-flash, serial, and hardware recovery. Refuses to invent board-specific shorting points, pinouts, or rescue parameters - those are marked Pending HIL and routed to official schematics, the ophub device matrix, or fw-hil-testing. For writing init scripts or uci-defaults on a recovered device route to openwrt-procd-init / openwrt-uci-defaults.
 ---
 

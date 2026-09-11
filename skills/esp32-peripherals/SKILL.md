@@ -1,5 +1,6 @@
 ---
 name: esp32-peripherals
+license: Apache-2.0
 description: Choose and wire ESP-IDF peripheral drivers for GPIO, I2C, SPI, UART, ADC, PWM (LEDC), and RMT — when to use each peripheral, the v6.x new-style componentized driver direction (e.g. driver/i2c_master.h from esp_driver_i2c, verified on official stable docs 2026-09-02) versus legacy drivers removed in v6.0, bus configuration (I2C address/speed, SPI mode, UART baud), and the hardware contract that pin numbers, mux options, pull-up availability, and strapping pin values must come from the chip datasheet or board schematic — never fabricated. Use when users mention 引脚/GPIO, I2C/SPI/UART/传感器接线, ADC 采样, PWM/LEDC/呼吸灯, RMT 红外/彩灯, driver headers like i2c_master.h, or ask which pins to use on a given ESP32 chip. REFUSES to quote default pin numbers for a chip from memory — routes to datasheet + menuconfig/runtime verification. Hand off concurrency around drivers to esp32-freertos, crash analysis to esp32-debug, and project/build issues to esp32-idf.
 ---
 
